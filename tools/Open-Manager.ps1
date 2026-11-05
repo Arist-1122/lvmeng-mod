@@ -1,4 +1,4 @@
-param([switch]$VerifyOnly)
+param([switch]$VerifyOnly, [switch]$PrepareOnly)
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $manifest = Get-Content -LiteralPath (Join-Path $repoRoot 'distribution\manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -20,6 +20,7 @@ if ((Get-Item -LiteralPath $archive).Length -ne $manifest.bytes -or (Get-FileHas
 if ($VerifyOnly) { Write-Output 'Archive checksum passed'; exit 0 }
 $destination = Join-Path $localRoot 'v0.1.0-preview'
 Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
-$entry = Join-Path $destination 'LvmengModManager.exe'
+$entry = Join-Path $destination $manifest.entryPoint
 if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.managerSha256) { throw 'Manager checksum failed' }
-Start-Process -FilePath $entry -WorkingDirectory $destination
+if ($PrepareOnly) { Write-Output 'Manager extracted and verified'; exit 0 }
+Start-Process -FilePath $entry -WorkingDirectory ([IO.Path]::GetDirectoryName($entry))

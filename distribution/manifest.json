@@ -1,6 +1,7 @@
 {
   "version": "0.1.0-preview",
   "fileName": "lvmeng-mod-manager-v0.1.0-preview.zip",
+  "entryPoint": "lvmeng-mod-manager-v0.1.0-preview/LvmengModManager.exe",
   "bytes": 23888380,
   "sha256": "495cc091df70ef4b21a1d526f161bc68a7b40c658e2b758b80aeb02d3d95e473",
   "managerSha256": "1b79e5654ed85b4a4d7b5b70969c58b93ea93452cbfd7192c584c40878347357",
