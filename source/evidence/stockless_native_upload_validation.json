@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "gameUsed": false,
+  "softwareWARP": true,
+  "realCoreUploadCallbacks": true,
+  "authoredOnlyInitialization": true,
+  "stockPayloadFilesPresent": false,
+  "textureMipMatches": 72,
+  "totalReadbacks": 83,
+  "successfulReplacements": 75,
+  "sourceUploadsPreserved": true,
+  "allSixOwnersMip0Confirmed": true,
+  "wrongTokenCheckedByNativeCore": true,
+  "initializationMicroseconds": 47071,
+  "maxMatchMicroseconds": 1687,
+  "fullShaCalls": 77,
+  "matcherSha256": "b90e3306401f7f1e18dcb03c3a7e1a2750cc9d271a9e4721c251e12feea1b7b3",
+  "coreSha256": "1c82a60c70735dc3f1938a4761d29e0012897acd72f6f054d2a53d666b9c6665"
+}

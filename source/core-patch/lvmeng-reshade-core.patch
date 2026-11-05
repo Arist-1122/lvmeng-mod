@@ -1,0 +1,2113 @@
+diff --git a/ReShade.vcxproj b/ReShade.vcxproj
+index 1948e3e..ef1d481 100644
+--- a/ReShade.vcxproj
++++ b/ReShade.vcxproj
+@@ -718,7 +718,18 @@
+     <ClInclude Include="source\d3d12\d3d12_command_queue.hpp" />
+     <ClInclude Include="source\d3d12\d3d12_command_queue_downlevel.hpp" />
+     <ClInclude Include="source\d3d12\d3d12_descriptor_heap.hpp" />
++    <ClInclude Include="source\d3d12\descriptor_metadata_v1.h" />
++    <ClInclude Include="source\d3d12\ia_snapshot_v1.h" />
++    <ClInclude Include="source\d3d12\ia_state_model.hpp" />
++    <ClInclude Include="source\d3d12\graphics_root_model.hpp" />
++    <ClInclude Include="source\d3d12\graphics_root_snapshot_v1.h" />
++    <ClInclude Include="source\d3d12\d3d12_graphics_root_snapshot.inl" />
++    <ClInclude Include="source\d3d12\d3d12_ia_snapshot.inl" />
++    <ClInclude Include="source\d3d12\d3d12_descriptor_metadata.hpp" />
++    <ClInclude Include="source\d3d12\d3d12_descriptor_metadata.inl" />
+     <ClInclude Include="source\d3d12\d3d12_device.hpp" />
++    <ClInclude Include="source\d3d12\d3d12_pipeline_clone.hpp" />
++    <ClInclude Include="include\pipeline_clone_v1.h" />
+     <ClInclude Include="source\d3d12\d3d12_device_downlevel.hpp" />
+     <ClInclude Include="source\d3d12\d3d12_extensions.hpp" />
+     <ClInclude Include="source\d3d12\d3d12_impl_command_list.hpp" />
+@@ -842,4 +853,4 @@
+     </CustomBuild>
+   </ItemGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+-</Project>
+\ No newline at end of file
++</Project>
+diff --git a/include/pipeline_clone_v1.h b/include/pipeline_clone_v1.h
+new file mode 100644
+index 0000000..0768883
+--- /dev/null
++++ b/include/pipeline_clone_v1.h
+@@ -0,0 +1,31 @@
++#pragma once
++#include <stdint.h>
++enum rs_pipeline_clone_status_v1 : uint32_t {
++ rs_clone_none=0, rs_clone_created=1, rs_clone_invalid=2,
++ rs_clone_not_current=3, rs_clone_modified_route=4,
++ rs_clone_unsupported_stream=5, rs_clone_native_failed=6, rs_clone_budget=7
++};
++struct rs_pipeline_clone_result_v1 {
++ uint32_t size,version,status;int32_t native_result;
++ uint64_t original_pipeline,clone_pipeline;
++ uint32_t stream_bytes,pixel_bytecode_offset,original_vs_crc32,original_ps_crc32;
++ uint32_t replacement_ps_crc32,non_ps_stream_crc32,non_ps_bytes_equal,reserved;
++};
++static_assert(sizeof(rs_pipeline_clone_result_v1)==64,"Clone result ABI");
++// Optional C __cdecl export, only inside the synchronous init_pipeline callback
++// for this exact device and original pipeline on the same thread:
++// bool ReShadeD3D12CloneCurrentPipelinePixelShaderV1(void *api_device,
++//   uint64_t original_pipeline,const void *replacement_dxbc,
++//   uint64_t replacement_bytes,rs_pipeline_clone_result_v1 *out);
++// size/version must be initialized. false means bad ABI/arguments. true means
++// processed: inspect status. This creates a caller-owned native PSO reference,
++// without addon create/init callbacks. The caller releases it after GPU use.
++// At most four native attempts per callback scope. Only the unmodified native
++// CreatePipelineState path is supported; API20 reconstruction and loaded PSOs
++// are rejected. Nonempty CachedPSO, unknown/duplicate stream fields, compute or
++// mesh pipeline streams are rejected. No input pointer is retained after return.
++// The PS bytecode pointer+length alone are replaced in a bounded 8192-byte
++// aligned stream copy. All non-PS stream bytes, including native view pointers,
++// SO, sample quality, node mask, strip cut and flags are preserved exactly.
++// Nested init callbacks have their own scope; an outer scope is restored only
++// when the nested scope ends. The ABI grants no Game targeting authorization.
+diff --git a/res/exports.def b/res/exports.def
+index bfd80ae..2f304ed 100644
+--- a/res/exports.def
++++ b/res/exports.def
+@@ -515,3 +515,17 @@ EXPORTS
+ 	; dinput8.dll
+ 	DirectInput8Create PRIVATE
+ 	GetdfDIJoystick PRIVATE
++
++ReShadeD3D12QueryDescriptorMetadataV1
++
++ReShadeD3D12QueryIASnapshotV1
++
++ReShadeD3D12BindIAViewsV1
++
++ReShadeD3D12CloneCurrentPipelinePixelShaderV1
++
++ReShadeD3D12QueryGraphicsRootStateV1
++
++ReShadeD3D12QueryCanonicalBC7UploadV1
++
++ReShadeD3D12ReplaceCanonicalBC7UploadV1
+diff --git a/source/d3d12/d3d12_command_list.cpp b/source/d3d12/d3d12_command_list.cpp
+index 44f3d73..d562fd7 100644
+--- a/source/d3d12/d3d12_command_list.cpp
++++ b/source/d3d12/d3d12_command_list.cpp
+@@ -10,13 +10,20 @@
+ #include "dll_log.hpp"
+ #include "com_utils.hpp"
+ #include "addon_manager.hpp"
++#include "d3d12_bc7_upload.inl"
+ 
+ using reshade::d3d12::to_handle;
+ 
+-D3D12GraphicsCommandList::D3D12GraphicsCommandList(D3D12Device *device, ID3D12GraphicsCommandList *original) :
++D3D12GraphicsCommandList::D3D12GraphicsCommandList(D3D12Device *device, ID3D12GraphicsCommandList *original, bool initially_recording) :
+ 	command_list_impl(device, original)
+ {
+ 	assert(_orig != nullptr && _device != nullptr);
++	const auto recording_generation = next_ia_generation();
++	_ia_state.enable(static_cast<uint32_t>(_orig->GetType()), recording_generation);
++	_graphics_root_state.enable(static_cast<uint32_t>(_orig->GetType()), recording_generation, initially_recording);
++	// CreateCommandList1 returns a closed command list, unlike CreateCommandList.
++	if (!initially_recording)
++		_ia_state.close();
+ 
+ #if RESHADE_ADDON
+ 	reshade::invoke_addon_event<reshade::addon_event::init_command_list>(this);
+@@ -24,6 +31,8 @@ D3D12GraphicsCommandList::D3D12GraphicsCommandList(D3D12Device *device, ID3D12Gr
+ }
+ D3D12GraphicsCommandList::~D3D12GraphicsCommandList()
+ {
++	_ia_state.destroy();
++	_graphics_root_state.destroy();
+ #if RESHADE_ADDON
+ 	reshade::invoke_addon_event<reshade::addon_event::destroy_command_list>(this);
+ #endif
+@@ -154,6 +163,8 @@ D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE D3D12GraphicsCommandList::GetType()
+ 
+ HRESULT STDMETHODCALLTYPE D3D12GraphicsCommandList::Close()
+ {
++	_ia_state.close();
++	_graphics_root_state.close();
+ #if RESHADE_ADDON
+ 	reshade::invoke_addon_event<reshade::addon_event::close_command_list>(this);
+ #endif
+@@ -162,6 +173,9 @@ HRESULT STDMETHODCALLTYPE D3D12GraphicsCommandList::Close()
+ }
+ HRESULT STDMETHODCALLTYPE D3D12GraphicsCommandList::Reset(ID3D12CommandAllocator *pAllocator, ID3D12PipelineState *pInitialState)
+ {
++	const auto recording_generation = next_ia_generation();
++	auto ia_reset = _ia_state.begin_reset(recording_generation);
++	auto root_reset = _graphics_root_state.begin_reset(recording_generation);
+ #if RESHADE_ADDON
+ 	reshade::invoke_addon_event<reshade::addon_event::reset_command_list>(this);
+ #endif
+@@ -176,6 +190,8 @@ HRESULT STDMETHODCALLTYPE D3D12GraphicsCommandList::Reset(ID3D12CommandAllocator
+ #endif
+ 
+ 	const HRESULT hr = _orig->Reset(pAllocator, pInitialState);
++	_ia_state.finish(ia_reset, SUCCEEDED(hr));
++	_graphics_root_state.finish(root_reset, SUCCEEDED(hr));
+ #if RESHADE_ADDON >= 2
+ 	if (SUCCEEDED(hr))
+ 	{
+@@ -190,7 +206,11 @@ HRESULT STDMETHODCALLTYPE D3D12GraphicsCommandList::Reset(ID3D12CommandAllocator
+ 
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::ClearState(ID3D12PipelineState *pPipelineState)
+ {
++	auto ia_clear = _ia_state.begin(0, 32, nullptr, true, false, nullptr);
++	auto root_clear = _graphics_root_state.begin(reshade::d3d12::graphics_root_store::make_unknown);
+ 	_orig->ClearState(pPipelineState);
++	_ia_state.finish(ia_clear);
++	_graphics_root_state.finish(root_clear);
+ 
+ 	_current_root_signature[0] = nullptr;
+ 	_current_root_signature[1] = nullptr;
+@@ -322,6 +342,10 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::CopyTextureRegion(const D3D12_T
+ 			dst_box.back = dst_box.front + pSrc->PlacedFootprint.Footprint.Depth;
+ 		}
+ 
++		reshade::d3d12::bc7_upload::Context native_copy = {
++			this, reinterpret_cast<ID3D12Device *>(_device->get_native()), static_cast<D3D12Device *>(_device),
++			_orig, *pDst, *pSrc, pSrcBox, DstX, DstY, DstZ };
++		reshade::d3d12::bc7_upload::Scope native_scope(native_copy);
+ 		if (reshade::invoke_addon_event<reshade::addon_event::copy_buffer_to_texture>(
+ 				this,
+ 				to_handle(pSrc->pResource),
+@@ -332,6 +356,14 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::CopyTextureRegion(const D3D12_T
+ 				pDst->SubresourceIndex,
+ 				&dst_box))
+ 			return;
++		if (native_copy.replacement != nullptr)
++		{
++			D3D12_TEXTURE_COPY_LOCATION alternate = *pSrc;
++			alternate.pResource = native_copy.replacement;
++			alternate.PlacedFootprint.Offset = native_copy.replacement_offset;
++			_orig->CopyTextureRegion(pDst, DstX, DstY, DstZ, &alternate, pSrcBox);
++			return;
++		}
+ 	}
+ 	else
+ 	if (pSrc->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX && pDst->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT &&
+@@ -486,6 +518,8 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::ResourceBarrier(UINT NumBarrier
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::ExecuteBundle(ID3D12GraphicsCommandList *pCommandList)
+ {
+ 	assert(pCommandList != nullptr);
++	auto ia_bundle = _ia_state.begin_unknown();
++	auto root_bundle = _graphics_root_state.begin(reshade::d3d12::graphics_root_store::make_unknown);
+ 
+ 	// Get original command list pointer from proxy object
+ 	const auto command_list_proxy = static_cast<D3D12GraphicsCommandList *>(pCommandList);
+@@ -495,6 +529,8 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::ExecuteBundle(ID3D12GraphicsCom
+ #endif
+ 
+ 	_orig->ExecuteBundle(command_list_proxy->_orig);
++	_ia_state.finish(ia_bundle);
++	_graphics_root_state.finish(root_bundle); // Callback bindings can be overwritten by inherited bundle state.
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetDescriptorHeaps(UINT NumDescriptorHeaps, ID3D12DescriptorHeap *const *ppDescriptorHeaps)
+ {
+@@ -507,7 +543,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetDescriptorHeaps(UINT NumDesc
+ 	ppDescriptorHeaps = heaps.p;
+ #endif
+ 
+-	_orig->SetDescriptorHeaps(NumDescriptorHeaps, ppDescriptorHeaps);
++	observed_set_descriptor_heaps(NumDescriptorHeaps, ppDescriptorHeaps);
+ 
+ 	for (UINT i = 0; i < 2; ++i)
+ 	{
+@@ -535,7 +571,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRootSignature(ID3D12R
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRootSignature(ID3D12RootSignature *pRootSignature)
+ {
+-	_orig->SetGraphicsRootSignature(pRootSignature);
++	observed_set_graphics_root_signature(pRootSignature);
+ 
+ 	_current_root_signature[0] = pRootSignature;
+ 
+@@ -565,7 +601,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRootDescriptorTable(U
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRootDescriptorTable(UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
+ {
+-	_orig->SetGraphicsRootDescriptorTable(RootParameterIndex, BaseDescriptor);
++	observed_set_graphics_root_descriptor_table(RootParameterIndex, BaseDescriptor);
+ 
+ #if RESHADE_ADDON >= 2
+ 	reshade::invoke_addon_event<reshade::addon_event::bind_descriptor_tables>(
+@@ -593,7 +629,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRoot32BitConstant(UIN
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRoot32BitConstant(UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues)
+ {
+-	_orig->SetGraphicsRoot32BitConstant(RootParameterIndex, SrcData, DestOffsetIn32BitValues);
++	observed_set_graphics_root_32bit_constant(RootParameterIndex, SrcData, DestOffsetIn32BitValues);
+ 
+ #if RESHADE_ADDON >= 2
+ 	reshade::invoke_addon_event<reshade::addon_event::push_constants>(
+@@ -621,7 +657,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRoot32BitConstants(UI
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRoot32BitConstants(UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues)
+ {
+-	_orig->SetGraphicsRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
++	observed_set_graphics_root_32bit_constants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
+ 
+ #if RESHADE_ADDON >= 2
+ 	reshade::invoke_addon_event<reshade::addon_event::push_constants>(
+@@ -656,7 +692,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRootConstantBufferVie
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRootConstantBufferView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+ {
+-	_orig->SetGraphicsRootConstantBufferView(RootParameterIndex, BufferLocation);
++	observed_set_graphics_root_constant_buffer_view(RootParameterIndex, BufferLocation);
+ 
+ #if RESHADE_ADDON >= 2
+ 	if (!reshade::has_addon_event<reshade::addon_event::push_descriptors>())
+@@ -700,7 +736,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRootShaderResourceVie
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRootShaderResourceView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+ {
+-	_orig->SetGraphicsRootShaderResourceView(RootParameterIndex, BufferLocation);
++	observed_set_graphics_root_shader_resource_view(RootParameterIndex, BufferLocation);
+ 
+ #if RESHADE_ADDON >= 2
+ 	// TODO: Get a working 'resource_view' handle for the SRV that can be passed as descriptor update
+@@ -728,7 +764,7 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetComputeRootUnorderedAccessVi
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRootUnorderedAccessView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+ {
+-	_orig->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
++	observed_set_graphics_root_unordered_access_view(RootParameterIndex, BufferLocation);
+ 
+ #if RESHADE_ADDON >= 2
+ 	// TODO: Get a working 'resource_view' handle for the UAV that can be passed as descriptor update
+@@ -742,7 +778,12 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::SetGraphicsRootUnorderedAccessV
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::IASetIndexBuffer(const D3D12_INDEX_BUFFER_VIEW *pView)
+ {
++	static_assert(sizeof(D3D12_INDEX_BUFFER_VIEW) == sizeof(rs_index_buffer_view_v1));
++	rs_index_buffer_view_v1 ia_view = {};
++	if (pView) std::memcpy(&ia_view, pView, sizeof(ia_view));
++	auto ia_mutation = _ia_state.begin(0, 0, nullptr, true, pView != nullptr, &ia_view);
+ 	_orig->IASetIndexBuffer(pView);
++	_ia_state.finish(ia_mutation);
+ 
+ #if RESHADE_ADDON >= 2
+ 	if (!reshade::has_addon_event<reshade::addon_event::bind_index_buffer>())
+@@ -764,7 +805,10 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::IASetIndexBuffer(const D3D12_IN
+ }
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::IASetVertexBuffers(UINT StartSlot, UINT NumViews, const D3D12_VERTEX_BUFFER_VIEW *pViews)
+ {
++	static_assert(sizeof(D3D12_VERTEX_BUFFER_VIEW) == sizeof(rs_vertex_buffer_view_v1));
++	auto ia_mutation = _ia_state.begin(StartSlot, NumViews, reinterpret_cast<const rs_vertex_buffer_view_v1 *>(pViews), false, false, nullptr);
+ 	_orig->IASetVertexBuffers(StartSlot, NumViews, pViews);
++	_ia_state.finish(ia_mutation);
+ 
+ #if RESHADE_ADDON >= 2
+ 	if (!reshade::has_addon_event<reshade::addon_event::bind_vertex_buffers>())
+@@ -930,7 +974,11 @@ void STDMETHODCALLTYPE D3D12GraphicsCommandList::ExecuteIndirect(ID3D12CommandSi
+ 	if (reshade::invoke_addon_event<reshade::addon_event::draw_or_dispatch_indirect>(this, reshade::api::indirect_command::unknown, to_handle(pArgumentBuffer), ArgumentBufferOffset, MaxCommandCount, 0))
+ 		return;
+ #endif
++	auto ia_indirect = _ia_state.begin_unknown();
++	auto root_indirect = _graphics_root_state.begin(reshade::d3d12::graphics_root_store::make_unknown);
+ 	_orig->ExecuteIndirect(pCommandSignature, MaxCommandCount, pArgumentBuffer, ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
++	_ia_state.finish(ia_indirect);
++	_graphics_root_state.finish(root_indirect);
+ }
+ 
+ void STDMETHODCALLTYPE D3D12GraphicsCommandList::AtomicCopyBufferUINT(ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT Dependencies, ID3D12Resource *const *ppDependentResources, const D3D12_SUBRESOURCE_RANGE_UINT64 *pDependentSubresourceRanges)
+diff --git a/source/d3d12/d3d12_command_list.hpp b/source/d3d12/d3d12_command_list.hpp
+index e09f3de..bf77026 100644
+--- a/source/d3d12/d3d12_command_list.hpp
++++ b/source/d3d12/d3d12_command_list.hpp
+@@ -12,7 +12,7 @@ class D3D12Device;
+ class DECLSPEC_UUID("479B29E3-9A2C-11D0-B696-00A0C903487A") D3D12GraphicsCommandList final : public ID3D12GraphicsCommandList10, public reshade::d3d12::command_list_impl
+ {
+ public:
+-	D3D12GraphicsCommandList(D3D12Device *device, ID3D12GraphicsCommandList *original);
++	D3D12GraphicsCommandList(D3D12Device *device, ID3D12GraphicsCommandList *original, bool initially_recording = true);
+ 	~D3D12GraphicsCommandList();
+ 
+ 	#pragma region IUnknown
+diff --git a/source/d3d12/d3d12_descriptor_heap.cpp b/source/d3d12/d3d12_descriptor_heap.cpp
+index 8c5be57..fd40a6e 100644
+--- a/source/d3d12/d3d12_descriptor_heap.cpp
++++ b/source/d3d12/d3d12_descriptor_heap.cpp
+@@ -67,14 +67,19 @@ ULONG   STDMETHODCALLTYPE D3D12DescriptorHeap::Release()
+ 	}
+ 
+ 	const auto orig = _orig;
++	const auto metadata_device_pin = _metadata_device_pin;
+ #if 0
+ 	reshade::log::message(reshade::log::level::debug, "Destroying ID3D12DescriptorHeap object %p (%p).", this, orig);
+ #endif
++	// Unregister while the proxy still exists; independent native refs may outlive it.
++	if (_metadata_owner) _metadata_owner->retire_descriptor_heap(this);
+ 	delete this;
+ 
+ 	const ULONG ref_orig = orig->Release();
+ 	if (ref_orig != 0) // Verify internal reference count
+ 		reshade::log::message(reshade::log::level::warning, "Reference count for ID3D12DescriptorHeap object %p (%p) is inconsistent (%lu).", this, orig, ref_orig);
++	// Last: owner destruction may now run, after this heap has been retired.
++	if (metadata_device_pin) metadata_device_pin->Release();
+ 	return 0;
+ }
+ 
+diff --git a/source/d3d12/d3d12_descriptor_heap.hpp b/source/d3d12/d3d12_descriptor_heap.hpp
+index ca59835..961be50 100644
+--- a/source/d3d12/d3d12_descriptor_heap.hpp
++++ b/source/d3d12/d3d12_descriptor_heap.hpp
+@@ -8,6 +8,7 @@
+ #if RESHADE_ADDON >= 2
+ 
+ class D3D12Device;
++namespace reshade::d3d12 { class device_impl; }
+ 
+ class DECLSPEC_UUID("8628AD68-6047-4D27-9D87-3E5F386E0231") D3D12DescriptorHeap final : public ID3D12DescriptorHeap
+ {
+@@ -41,6 +42,9 @@ public:
+ 
+ 	void initialize_descriptor_base_handle(size_t heap_index);
+ 
++	reshade::d3d12::device_impl *_metadata_owner = nullptr;
++	ID3D12Device *_metadata_device_pin = nullptr; // External wrappers retain the proxy owner, never the internal wrappers.
++	uint64_t _metadata_generation = 0;
+ 	ID3D12DescriptorHeap *_orig;
+ 	LONG _ref = 1;
+ 
+diff --git a/source/d3d12/d3d12_descriptor_metadata.hpp b/source/d3d12/d3d12_descriptor_metadata.hpp
+new file mode 100644
+index 0000000..671d311
+--- /dev/null
++++ b/source/d3d12/d3d12_descriptor_metadata.hpp
+@@ -0,0 +1,218 @@
++#pragma once
++#include "descriptor_metadata_v1.h"
++#include <cstdint>
++#include <memory>
++#include <mutex>
++#include <new>
++#include <utility>
++
++namespace reshade::d3d12
++{
++// The core disables exceptions. Storage is fixed, explicitly nothrow, never
++// resized; tombstones may be reused but no live record is silently evicted.
++template <typename T> class metadata_bounded_map
++{
++    struct node { uint64_t key=0; T value={}; uint8_t state=0; };
++    std::unique_ptr<node[]> _nodes; size_t _length=0,_limit=0,_count=0;
++    static uint64_t mix(uint64_t x) noexcept {x^=x>>30;x*=0xbf58476d1ce4e5b9ull;x^=x>>27;x*=0x94d049bb133111ebull;return x^(x>>31);}
++public:
++    bool initialize(size_t limit) noexcept {if(!limit||limit>262144)return false;_length=2;while(_length<limit*2)_length<<=1;_limit=limit;_nodes.reset(new(std::nothrow)node[_length]);return bool(_nodes);}
++    T *find(uint64_t key) noexcept
++    {
++        if(!_nodes)return nullptr;
++        for(size_t n=0,i=size_t(mix(key))&(_length-1);n<_length;++n,i=(i+1)&(_length-1)){auto &s=_nodes[i];if(!s.state)return nullptr;if(s.state==1&&s.key==key)return &s.value;}return nullptr;
++    }
++    const T *find(uint64_t key) const noexcept {return const_cast<metadata_bounded_map *>(this)->find(key);}
++    bool put(uint64_t key,const T &value) noexcept
++    {
++        if(auto p=find(key)){*p=value;return true;}if(!_nodes||_count>=_limit)return false;
++        for(size_t n=0,i=size_t(mix(key))&(_length-1);n<_length;++n,i=(i+1)&(_length-1)){auto &s=_nodes[i];if(s.state==1)continue;s.key=key;s.value=value;s.state=1;++_count;return true;}return false;
++    }
++    bool erase(uint64_t key) noexcept
++    {
++        if(!_nodes)return false;
++        for(size_t n=0,i=size_t(mix(key))&(_length-1);n<_length;++n,i=(i+1)&(_length-1)){auto &s=_nodes[i];if(!s.state)return false;if(s.state==1&&s.key==key){s.state=2;s.value={};--_count;return true;}}return false;
++    }
++    template<typename F> void each(F &&f) noexcept {if(_nodes)for(size_t i=0;i<_length;++i)if(_nodes[i].state==1)f(_nodes[i].key,_nodes[i].value);}
++    template<typename F> void each(F &&f) const noexcept {if(_nodes)for(size_t i=0;i<_length;++i)if(_nodes[i].state==1)f(_nodes[i].key,_nodes[i].value);}
++    template<typename F> void erase_if(F &&f) noexcept {if(_nodes)for(size_t i=0;i<_length;++i)if(_nodes[i].state==1&&f(_nodes[i].key,_nodes[i].value)){_nodes[i].state=2;_nodes[i].value={};--_count;}}
++    size_t storage_bytes() const noexcept {return _nodes?_length*sizeof(node):0;}
++};
++
++// Independent of API20 legacy _views. No native call, addon callback or native
++// pointer dereference occurs under the mutex. A transaction depends on its
++// destination slots, captured copy sources, and resource/heap lifetimes.
++class descriptor_metadata_store
++{
++public:
++    struct limits {size_t resources=65536,heaps=4096,slots=262144,copy_elements=4096,transactions=16;};
++    struct heap_record {uint64_t generation=0,cpu=0,gpu=0,proxy_cpu=0;uint32_t count=0,increment=0,type=0;bool queryable=true;};
++    struct resource_record {uint64_t generation=0,size=0;};
++    struct slot_record {
++        rs_descriptor_metadata_v1 value={sizeof(rs_descriptor_metadata_v1),1};
++        uint64_t heap_generation=0, token=0;
++        uint32_t pending=0;
++    };
++    struct destination {
++        uint64_t cpu=0, heap_generation=0, batch=0;
++        uint64_t source_cpu=0, source_heap_generation=0, source_epoch=0;
++    };
++    class transaction
++    {
++        friend class descriptor_metadata_store;
++        descriptor_metadata_store *owner=nullptr;uint64_t token=0;size_t count=0;
++        std::unique_ptr<destination[]> destinations;std::unique_ptr<slot_record[]> values;
++    public:
++        transaction()=default;transaction(const transaction &)=delete;transaction &operator=(const transaction &)=delete;
++        transaction(transaction &&o) noexcept:owner(o.owner),token(o.token),count(o.count),destinations(std::move(o.destinations)),values(std::move(o.values)){o.owner=nullptr;}
++        ~transaction(){if(owner)owner->finish(*this,false);}
++    };
++    descriptor_metadata_store() noexcept:descriptor_metadata_store(limits{}){}
++    explicit descriptor_metadata_store(limits caps) noexcept:_limits(caps)
++    {_disabled=!caps.copy_elements||caps.copy_elements>4096||!caps.transactions||caps.transactions>16||!_resources.initialize(caps.resources)||!_heaps.initialize(caps.heaps)||!_slots.initialize(caps.slots);}
++    uint64_t add_resource(uint64_t key,uint64_t size) noexcept
++    {std::lock_guard<std::mutex> lock(_mutex);if(_disabled||!key)return 0;const auto gen=advance();if(!gen)return 0;if(!_resources.put(key,{gen,size}))return disable();return gen;}
++    void remove_resource(uint64_t key) noexcept
++    {
++        std::lock_guard<std::mutex> lock(_mutex);
++        // Copy, query and publication all validate the recorded resource
++        // generation. A destruction need not walk the entire descriptor store.
++        if (_resources.erase(key)) advance();
++    }
++    uint64_t add_heap(uint64_t cpu,uint64_t gpu,uint64_t proxy_cpu,uint32_t count,uint32_t increment,uint32_t type,bool queryable=true) noexcept
++    {
++        std::lock_guard<std::mutex> lock(_mutex);if(_disabled||!cpu||!count||!increment||uint64_t(count)>(UINT64_MAX-cpu)/increment||(gpu&&uint64_t(count)>(UINT64_MAX-gpu)/increment))return 0;
++        const auto gen=advance();if(!gen)return 0;if(!_heaps.put(gen,{gen,cpu,gpu,proxy_cpu,count,increment,type,queryable}))return disable();return gen;
++    }
++    void remove_heap(uint64_t generation) noexcept
++    {std::lock_guard<std::mutex> lock(_mutex);if(!_heaps.erase(generation))return;advance();_slots.erase_if([&](uint64_t,const slot_record &s){return s.heap_generation==generation;});}
++    void remove_internal_view(uint64_t cpu) noexcept {std::lock_guard<std::mutex> lock(_mutex);if(_slots.erase(cpu))advance();}
++    transaction begin_write(uint64_t cpu,rs_descriptor_metadata_v1 value,bool internal=false) noexcept
++    {
++        std::lock_guard<std::mutex> lock(_mutex);transaction tx;if(!allocate(tx,1))return tx;const auto h=find_cpu(cpu);
++        if(!h&&!internal){if(_slots.erase(cpu))advance();return tx;}slot_record v;v.heap_generation=h?h->generation:0;v.value=value;
++        if(value.resource_identity){const auto r=_resources.find(value.resource_identity);if(!r)v.value={sizeof(rs_descriptor_metadata_v1),1};else{v.value.resource_generation=r->generation;v.value.resource_size=r->size;
++            if(v.value.status==rs_descriptor_known&&(v.value.offset_bytes>r->size||v.value.range_bytes>r->size-v.value.offset_bytes))v.value.status=rs_descriptor_invalid;}}
++        tx.destinations[0]={cpu,v.heap_generation};tx.values[0]=v;activate(tx);return tx;
++    }
++    transaction begin_copy(const uint64_t *dst,const uint64_t *src,size_t count) noexcept
++    {
++        std::lock_guard<std::mutex> lock(_mutex);transaction tx;if(!count)return tx;if(!dst||!src){disable();return tx;}if(!allocate(tx,count))return tx;
++        // Snapshot ALL sources before publishing any busy destination.
++        for (size_t i=0; i<count; ++i) {
++            const auto heap=find_cpu(dst[i]);
++            if (!heap) { disable(); return tx; }
++            auto &destination=tx.destinations[i];
++            destination={dst[i],heap->generation};
++            const auto source=_slots.find(src[i]);
++            if (source && valid(*source)) {
++                tx.values[i]=*source;
++                destination.source_cpu=src[i];
++                destination.source_heap_generation=source->heap_generation;
++                destination.source_epoch=source->value.slot_epoch;
++            }
++            tx.values[i].heap_generation=heap->generation;
++        }
++        activate(tx);return tx;
++    }
++    void finish(transaction &tx,bool returned=true) noexcept
++    {
++        std::lock_guard<std::mutex> lock(_mutex);
++        if (tx.owner!=this) return;
++        const auto epoch=advance();
++        if (!_disabled) {
++            // Check sources before publishing any destination from this copy.
++            if (returned) for (size_t i=0; i<tx.count; ++i) {
++                const auto &dst=tx.destinations[i];
++                auto &value=tx.values[i];
++                if (!source_unchanged(dst,tx.token) || !valid_resource(value))
++                    value.value={sizeof(rs_descriptor_metadata_v1),1};
++            }
++            for (size_t i=0; i<tx.count; ++i) {
++                const auto &dst=tx.destinations[i];
++                auto target=_slots.find(dst.cpu);
++                if (!target || !target->pending || target->heap_generation!=dst.heap_generation ||
++                    target->value.slot_epoch!=dst.batch)
++                    continue;
++                if (--target->pending) continue;
++                if (returned && target->token==tx.token)
++                    *target=tx.values[i];
++                else
++                    target->value={sizeof(rs_descriptor_metadata_v1),1};
++                target->token=0;
++                target->value.slot_epoch=epoch;
++            }
++        }
++        --_active;
++        tx.owner=nullptr;
++    }
++    bool query(uint64_t table,uint32_t binding,uint32_t array_offset,rs_descriptor_metadata_v1 *out) const noexcept
++    {
++        if(!out||out->size!=sizeof(*out)||out->version!=1)return false;std::lock_guard<std::mutex> lock(_mutex);rs_descriptor_metadata_v1 r={sizeof(*out),1};r.mutation_epoch=_epoch;
++        if(_disabled){r.status=rs_descriptor_capacity;*out=r;return true;}if(!table||array_offset){r.status=rs_descriptor_invalid;*out=r;return true;}
++        const heap_record *found=nullptr;uint64_t slot=0;bool ambiguous=false;const bool cpu=(table&0xF000000000000000ull)==0xF000000000000000ull;const uint64_t address=cpu?(table^0xF000000000000000ull):table;
++        _heaps.each([&](uint64_t,const heap_record &h){const uint64_t base=cpu?h.proxy_cpu:h.gpu;if(!base||address<base)return;const auto delta=address-base;if(delta%h.increment||delta/h.increment>=h.count)return;if(found){ambiguous=true;return;}found=&h;slot=delta/h.increment;});
++        if(ambiguous){*out=r;return true;}if(!found){r.status=rs_descriptor_dead;*out=r;return true;}if(binding>=found->count-slot){r.status=rs_descriptor_invalid;*out=r;return true;}slot+=binding;
++        // Core transient GPU heaps have uninstrumented allocator/command-list
++        // paths. They are never evidence sources in this prototype.
++        const auto s=_slots.find(found->cpu+slot*found->increment);
++        if(!found->queryable)r.status=rs_descriptor_unsupported;
++        else if(s&&s->heap_generation==found->generation){r=s->value;if(!valid(*s)&&r.status!=rs_descriptor_busy)r={sizeof(*out),1};}
++        r.size=sizeof(*out);r.version=1;r.heap_generation=found->generation;r.heap_slot=slot;r.heap_type=found->type;r.mutation_epoch=_epoch;*out=r;return true;
++    }
++    void fail_closed() noexcept {std::lock_guard<std::mutex> lock(_mutex);disable();}
++    size_t fixed_storage_bytes() const noexcept {return _resources.storage_bytes()+_heaps.storage_bytes()+_slots.storage_bytes();}
++private:
++    bool allocate(transaction &tx,size_t count) noexcept
++    {
++        if(_disabled)return false;if(count>_limits.copy_elements||_active>=_limits.transactions){disable();return false;}
++        tx.destinations.reset(new(std::nothrow)destination[count]);tx.values.reset(new(std::nothrow)slot_record[count]);if(!tx.destinations||!tx.values){disable();return false;}tx.count=count;return true;
++    }
++    void activate(transaction &tx) noexcept
++    {
++        const auto token=advance();
++        if (!token) return;
++        for (size_t i=0; i<tx.count; ++i) {
++            auto &dst=tx.destinations[i];
++            auto slot=_slots.find(dst.cpu);
++            if (slot && slot->pending && slot->heap_generation==dst.heap_generation) {
++                // Keep the slot busy until all overlapping calls finish.
++                // No call can establish which native write took effect last.
++                ++slot->pending;
++                slot->token=0;
++                slot->value.status=rs_descriptor_unknown;
++                dst.batch=slot->value.slot_epoch;
++                continue;
++            }
++            slot_record busy;
++            busy.heap_generation=dst.heap_generation;
++            busy.token=token;
++            busy.pending=1;
++            busy.value.status=rs_descriptor_busy;
++            busy.value.slot_epoch=dst.batch=token;
++            if (!_slots.put(dst.cpu,busy)) { disable(); return; }
++        }
++        tx.token=token;
++        tx.owner=this;
++        ++_active;
++    }
++    bool source_unchanged(const destination &dst,uint64_t token) const noexcept
++    {
++        if (!dst.source_epoch) return true;
++        const auto source=_slots.find(dst.source_cpu);
++        if (!source || source->heap_generation!=dst.source_heap_generation ||
++            (source->heap_generation && !_heaps.find(source->heap_generation)))
++            return false;
++        if (source->pending) return source->token==token;
++        return source->value.slot_epoch==dst.source_epoch && valid(*source);
++    }
++    const heap_record *find_cpu(uint64_t cpu) const noexcept
++    {const heap_record *found=nullptr;bool ambiguous=false;_heaps.each([&](uint64_t,const heap_record &h){if(cpu>=h.cpu&&(cpu-h.cpu)%h.increment==0&&(cpu-h.cpu)/h.increment<h.count){if(found)ambiguous=true;else found=&h;}});return ambiguous?nullptr:found;}
++    bool valid_resource(const slot_record &s) const noexcept {if(!s.value.resource_identity)return true;const auto r=_resources.find(s.value.resource_identity);return r&&r->generation==s.value.resource_generation;}
++    bool valid(const slot_record &s) const noexcept {const auto h=s.heap_generation?_heaps.find(s.heap_generation):nullptr;return !s.pending&&(!s.heap_generation||(h&&h->queryable))&&valid_resource(s);}
++    uint64_t advance() noexcept {if(_epoch==UINT64_MAX)return disable();return ++_epoch;}
++    uint64_t disable() noexcept {_disabled=true;return 0;}
++    limits _limits;mutable std::mutex _mutex;uint64_t _epoch=0;size_t _active=0;bool _disabled=false;
++    metadata_bounded_map<resource_record> _resources;metadata_bounded_map<heap_record> _heaps;metadata_bounded_map<slot_record> _slots;
++};
++}
+diff --git a/source/d3d12/d3d12_descriptor_metadata.inl b/source/d3d12/d3d12_descriptor_metadata.inl
+new file mode 100644
+index 0000000..b43afde
+--- /dev/null
++++ b/source/d3d12/d3d12_descriptor_metadata.inl
+@@ -0,0 +1,107 @@
++// Included by d3d12_impl_device.cpp. The metadata comes from the FINAL native
++// arguments, not an addon-modifiable API desc whose callback may return false.
++reshade::d3d12::descriptor_metadata_store::transaction reshade::d3d12::device_impl::metadata_begin_srv(ID3D12Resource *resource, const D3D12_SHADER_RESOURCE_VIEW_DESC *desc, D3D12_CPU_DESCRIPTOR_HANDLE dest, bool internal)
++{
++    rs_descriptor_metadata_v1 v = { sizeof(v), 1 };
++    v.kind = rs_descriptor_srv; v.resource_identity = reinterpret_cast<uint64_t>(resource);
++    v.status = rs_descriptor_unsupported;
++    if (desc) {
++        v.view_dimension = desc->ViewDimension; v.format = desc->Format;
++        if (!resource && desc->ViewDimension != D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE) v.status = rs_descriptor_null;
++        else if (resource && desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D) {
++            // Identity/presence only: this ABI intentionally exposes no mip,
++            // plane, sample, dimension extent or texture byte-range proof.
++            // Ask the native device about this explicit typed sampling format;
++            // no GPU work or resource read is performed here.
++            const auto resource_desc = resource->GetDesc();
++            D3D12_FEATURE_DATA_FORMAT_SUPPORT support = { desc->Format };
++            if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
++                desc->Format != DXGI_FORMAT_UNKNOWN &&
++                SUCCEEDED(_orig->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support))) &&
++                (support.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE2D) &&
++                (support.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE))
++                v.status = rs_descriptor_known;
++        }
++        else if (resource && desc->ViewDimension == D3D12_SRV_DIMENSION_BUFFER && desc->Format == DXGI_FORMAT_UNKNOWN && desc->Buffer.StructureByteStride && desc->Buffer.Flags == D3D12_BUFFER_SRV_FLAG_NONE) {
++            v.stride = desc->Buffer.StructureByteStride; v.element_count = desc->Buffer.NumElements;
++            if (desc->Buffer.FirstElement <= UINT64_MAX / v.stride) {
++                v.offset_bytes = desc->Buffer.FirstElement * v.stride; v.range_bytes = v.element_count * v.stride; v.status = rs_descriptor_known;
++            } else v.status = rs_descriptor_invalid;
++        }
++    }
++    return _descriptor_metadata.begin_write(dest.ptr, v, internal);
++}
++reshade::d3d12::descriptor_metadata_store::transaction reshade::d3d12::device_impl::metadata_begin_uav(ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc, D3D12_CPU_DESCRIPTOR_HANDLE dest, bool internal)
++{
++    rs_descriptor_metadata_v1 v = { sizeof(v), 1 };
++    v.kind = rs_descriptor_uav; v.resource_identity = reinterpret_cast<uint64_t>(resource); v.status = rs_descriptor_unsupported;
++    if (desc) {
++        v.view_dimension = desc->ViewDimension; v.format = desc->Format;
++        if (!resource) v.status = rs_descriptor_null;
++        else if (desc->ViewDimension == D3D12_UAV_DIMENSION_BUFFER && desc->Format == DXGI_FORMAT_UNKNOWN && desc->Buffer.StructureByteStride && desc->Buffer.Flags == D3D12_BUFFER_UAV_FLAG_NONE) {
++            v.stride = desc->Buffer.StructureByteStride; v.element_count = desc->Buffer.NumElements;
++            if (desc->Buffer.FirstElement <= UINT64_MAX / v.stride) {
++                v.offset_bytes = desc->Buffer.FirstElement * v.stride; v.range_bytes = v.element_count * v.stride; v.status = rs_descriptor_known;
++            } else v.status = rs_descriptor_invalid;
++        }
++    }
++    return _descriptor_metadata.begin_write(dest.ptr, v, internal);
++}
++reshade::d3d12::descriptor_metadata_store::transaction reshade::d3d12::device_impl::metadata_begin_cbv(const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc, D3D12_CPU_DESCRIPTOR_HANDLE dest)
++{
++    rs_descriptor_metadata_v1 v = { sizeof(v), 1 }; v.kind = rs_descriptor_cbv;
++    if (!desc || !desc->BufferLocation) v.status = rs_descriptor_null;
++    else {
++#if RESHADE_ADDON >= 2
++        api::resource resource; uint64_t offset = 0;
++        if (resolve_gpu_address(desc->BufferLocation, &resource, &offset)) {
++            v.resource_identity = resource.handle; v.offset_bytes = offset; v.range_bytes = desc->SizeInBytes; v.status = rs_descriptor_known;
++        }
++#endif
++    }
++    return _descriptor_metadata.begin_write(dest.ptr, v);
++}
++reshade::d3d12::descriptor_metadata_store::transaction reshade::d3d12::device_impl::metadata_begin_sampler(bool has_desc, D3D12_CPU_DESCRIPTOR_HANDLE dest, bool internal)
++{
++    // Presence after native call-return only. No filter/address/LOD contract is
++    // exposed by this ABI. There is no legal null sampler creation operation.
++    rs_descriptor_metadata_v1 v = { sizeof(v), 1 };
++    v.kind = rs_descriptor_sampler;
++    v.status = has_desc ? rs_descriptor_known : rs_descriptor_unknown;
++    return _descriptor_metadata.begin_write(dest.ptr, v, internal);
++}
++reshade::d3d12::descriptor_metadata_store::transaction reshade::d3d12::device_impl::metadata_begin_copy(UINT nd, const D3D12_CPU_DESCRIPTOR_HANDLE *dst, const UINT *ds, UINT ns, const D3D12_CPU_DESCRIPTOR_HANDLE *src, const UINT *ss, D3D12_DESCRIPTOR_HEAP_TYPE type)
++{
++    if (type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV && type != D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) return {};
++    if ((nd && !dst) || (ns && !src) || nd > 4096 || ns > 4096) { _descriptor_metadata.fail_closed(); return {}; }
++    uint64_t total_d = 0, total_s = 0;
++    for (UINT i = 0; i < nd; ++i) total_d += ds ? ds[i] : 1;
++    for (UINT i = 0; i < ns; ++i) total_s += ss ? ss[i] : 1;
++    if (total_d != total_s || total_d > 4096) { _descriptor_metadata.fail_closed(); return {}; }
++    if (!total_d) return {};
++    const auto step = _descriptor_handle_size[type];
++    std::unique_ptr<uint64_t[]> addresses(new (std::nothrow) uint64_t[static_cast<size_t>(total_d) * 2]);
++    if (!addresses) { _descriptor_metadata.fail_closed(); return {}; }
++    size_t cursor = 0;
++    for (UINT i = 0; i < nd; ++i) {
++        const UINT count = ds ? ds[i] : 1;
++        if (count && uint64_t(count-1) > (UINT64_MAX-dst[i].ptr)/step) { _descriptor_metadata.fail_closed(); return {}; }
++        for (UINT j = 0; j < count; ++j) addresses[cursor++] = dst[i].ptr + uint64_t(j)*step;
++    }
++    for (UINT i = 0; i < ns; ++i) {
++        const UINT count = ss ? ss[i] : 1;
++        if (count && uint64_t(count-1) > (UINT64_MAX-src[i].ptr)/step) { _descriptor_metadata.fail_closed(); return {}; }
++        for (UINT j = 0; j < count; ++j) addresses[cursor++] = src[i].ptr + uint64_t(j)*step;
++    }
++    return _descriptor_metadata.begin_copy(addresses.get(), addresses.get()+total_d, static_cast<size_t>(total_d));
++}
++
++extern "C" __declspec(dllexport) bool ReShadeD3D12QueryDescriptorMetadataV1(void *api_device, uint64_t table, uint32_t binding, uint32_t array_offset, rs_descriptor_metadata_v1 *out)
++{
++    if (!api_device || !out || out->size != sizeof(*out) || out->version != 1) return false;
++    // Caller owns the API device lifetime; honor base-subobject adjustment.
++    auto *api_base = static_cast<reshade::api::device *>(api_device);
++    if (api_base->get_api() != reshade::api::device_api::d3d12) return false;
++    auto *device = static_cast<reshade::d3d12::device_impl *>(api_base);
++    return device->query_descriptor_metadata(table, binding, array_offset, out);
++}
+diff --git a/source/d3d12/d3d12_device.cpp b/source/d3d12/d3d12_device.cpp
+index fab80ad..a3ba6aa 100644
+--- a/source/d3d12/d3d12_device.cpp
++++ b/source/d3d12/d3d12_device.cpp
+@@ -12,6 +12,7 @@
+ #include "d3d12_pipeline_library.hpp"
+ #include "d3d12_resource.hpp"
+ #include "d3d12_impl_type_convert.hpp"
++#include "d3d12_pipeline_clone.hpp"
+ #include "dll_log.hpp" // Include late to get 'hr_to_string' helper function
+ #include "com_utils.hpp"
+ #include "hook_manager.hpp"
+@@ -400,10 +401,11 @@ HRESULT STDMETHODCALLTYPE D3D12Device::CreateDescriptorHeap(const D3D12_DESCRIPT
+ 			if (descriptor_heap_proxy->check_and_upgrade_interface(riid))
+ 			{
+ 				register_descriptor_heap(descriptor_heap_proxy);
++				// Native child references alone do not retain the ReShade device proxy.
++				AddRef();
++				descriptor_heap_proxy->_metadata_device_pin = this;
+ 
+-				register_destruction_callback_d3dx(descriptor_heap_proxy, [this, descriptor_heap_proxy]() {
+-					unregister_descriptor_heap(descriptor_heap_proxy);
+-				});
++				// Proxy final Release unregisters synchronously; no delayed callback captures it.
+ 
+ #if RESHADE_VERBOSE_LOG
+ 				reshade::log::message(reshade::log::level::debug, "Returning ID3D12DescriptorHeap object %p (%p).", descriptor_heap_proxy, descriptor_heap_proxy->_orig);
+@@ -457,7 +459,9 @@ void    STDMETHODCALLTYPE D3D12Device::CreateConstantBufferView(const D3D12_CONS
+ 	const reshade::api::descriptor_table table = convert_to_descriptor_table(DestDescriptor);
+ 	DestDescriptor = convert_to_original_cpu_descriptor_handle(DestDescriptor);
+ #endif
++	auto metadata_operation = metadata_begin_cbv(pDesc, DestDescriptor);
+ 	_orig->CreateConstantBufferView(pDesc, DestDescriptor);
++	descriptor_metadata().finish(metadata_operation);
+ 
+ #if RESHADE_ADDON >= 2
+ 	if (!reshade::has_addon_event<reshade::addon_event::update_descriptor_tables>())
+@@ -512,7 +516,9 @@ void    STDMETHODCALLTYPE D3D12Device::CreateShaderResourceView(ID3D12Resource *
+ 	const reshade::api::descriptor_table table = convert_to_descriptor_table(DestDescriptor);
+ 	DestDescriptor = convert_to_original_cpu_descriptor_handle(DestDescriptor);
+ #endif
++	auto metadata_operation = metadata_begin_srv(pResource, pDesc, DestDescriptor);
+ 	_orig->CreateShaderResourceView(pResource, pDesc, DestDescriptor);
++	descriptor_metadata().finish(metadata_operation);
+ 
+ #if RESHADE_ADDON
+ 	const reshade::api::resource_view descriptor_value = acceleration_structure ? reshade::api::resource_view { internal_desc.RaytracingAccelerationStructure.Location } : to_handle(DestDescriptor);
+@@ -556,7 +562,9 @@ void    STDMETHODCALLTYPE D3D12Device::CreateUnorderedAccessView(ID3D12Resource
+ 	const reshade::api::descriptor_table table = convert_to_descriptor_table(DestDescriptor);
+ 	DestDescriptor = convert_to_original_cpu_descriptor_handle(DestDescriptor);
+ #endif
++	auto metadata_operation = metadata_begin_uav(pResource, pDesc, DestDescriptor);
+ 	_orig->CreateUnorderedAccessView(pResource, pCounterResource, pDesc, DestDescriptor);
++	descriptor_metadata().finish(metadata_operation);
+ 
+ #if RESHADE_ADDON
+ 	const reshade::api::resource_view descriptor_value = to_handle(DestDescriptor);
+@@ -645,7 +653,9 @@ void    STDMETHODCALLTYPE D3D12Device::CreateSampler(const D3D12_SAMPLER_DESC *p
+ 	const reshade::api::descriptor_table table = convert_to_descriptor_table(DestDescriptor);
+ 	DestDescriptor = convert_to_original_cpu_descriptor_handle(DestDescriptor);
+ #endif
++	auto metadata_operation = metadata_begin_sampler(pDesc != nullptr, DestDescriptor);
+ 	_orig->CreateSampler(pDesc, DestDescriptor);
++	descriptor_metadata().finish(metadata_operation);
+ 
+ #if RESHADE_ADDON
+ 	const reshade::api::sampler descriptor_value = { DestDescriptor.ptr };
+@@ -694,6 +704,8 @@ void    STDMETHODCALLTYPE D3D12Device::CopyDescriptors(UINT NumDestDescriptorRan
+ 
+ 				while (dst_offset < dst_count)
+ 				{
++					while (src_range < NumSrcDescriptorRanges && src_offset == (pSrcDescriptorRangeSizes != nullptr ? pSrcDescriptorRangeSizes[src_range] : 1)) { ++src_range; src_offset = 0; }
++					if (src_range >= NumSrcDescriptorRanges) { descriptor_metadata().fail_closed(); return; }
+ 					const UINT src_count = (pSrcDescriptorRangeSizes != nullptr ? pSrcDescriptorRangeSizes[src_range] : 1);
+ 
+ 					copies[num_copies].dest_table = convert_to_descriptor_table(offset_descriptor_handle(pDestDescriptorRangeStarts[dst_range], dst_offset, DescriptorHeapsType));
+@@ -703,27 +715,11 @@ void    STDMETHODCALLTYPE D3D12Device::CopyDescriptors(UINT NumDestDescriptorRan
+ 					copies[num_copies].source_binding = 0;
+ 					copies[num_copies].source_array_offset = 0;
+ 
+-					if (src_count <= (dst_count - dst_offset))
+-					{
+-						copies[num_copies].count = src_count;
+-
+-						src_range += 1;
+-						src_offset = 0;
+-						dst_offset += src_count;
+-					}
+-					else
+-					{
+-						copies[num_copies].count = 1;
+-
+-						src_offset += 1;
+-						dst_offset += 1;
+-
+-						if (src_offset >= src_count)
+-						{
+-							src_range += 1;
+-							src_offset = 0;
+-						}
+-					}
++					const UINT remaining = std::min(src_count - src_offset, dst_count - dst_offset);
++					copies[num_copies].count = remaining;
++					src_offset += remaining;
++					dst_offset += remaining;
++					if (src_offset == src_count) { ++src_range; src_offset = 0; }
+ 
+ 					num_copies++;
+ 				}
+@@ -739,7 +735,9 @@ void    STDMETHODCALLTYPE D3D12Device::CopyDescriptors(UINT NumDestDescriptorRan
+ 		for (UINT i = 0; i < NumSrcDescriptorRanges; ++i)
+ 			descriptor_range_starts[NumDestDescriptorRanges + i] = convert_to_original_cpu_descriptor_handle(pSrcDescriptorRangeStarts[i]);
+ 
++		auto metadata_operation = metadata_begin_copy(NumDestDescriptorRanges, descriptor_range_starts.p, pDestDescriptorRangeSizes, NumSrcDescriptorRanges, descriptor_range_starts.p + NumDestDescriptorRanges, pSrcDescriptorRangeSizes, DescriptorHeapsType);
+ 		_orig->CopyDescriptors(NumDestDescriptorRanges, descriptor_range_starts.p, pDestDescriptorRangeSizes, NumSrcDescriptorRanges, descriptor_range_starts.p + NumDestDescriptorRanges, pSrcDescriptorRangeSizes, DescriptorHeapsType);
++		descriptor_metadata().finish(metadata_operation);
+ 		return;
+ 	}
+ 	else
+@@ -790,7 +788,11 @@ void    STDMETHODCALLTYPE D3D12Device::CopyDescriptorsSimple(UINT NumDescriptors
+ 				return;
+ 		}
+ 
+-		_orig->CopyDescriptorsSimple(NumDescriptors, convert_to_original_cpu_descriptor_handle(DestDescriptorRangeStart), convert_to_original_cpu_descriptor_handle(SrcDescriptorRangeStart), DescriptorHeapsType);
++		const auto metadata_dest = convert_to_original_cpu_descriptor_handle(DestDescriptorRangeStart);
++		const auto metadata_source = convert_to_original_cpu_descriptor_handle(SrcDescriptorRangeStart);
++		auto metadata_operation = metadata_begin_copy(1, &metadata_dest, &NumDescriptors, 1, &metadata_source, &NumDescriptors, DescriptorHeapsType);
++		_orig->CopyDescriptorsSimple(NumDescriptors, metadata_dest, metadata_source, DescriptorHeapsType);
++		descriptor_metadata().finish(metadata_operation);
+ 		return;
+ 	}
+ 	else
+@@ -1254,7 +1256,7 @@ HRESULT STDMETHODCALLTYPE D3D12Device::CreateCommandList1(UINT nodeMask, D3D12_C
+ 		// Ignore video command lists ('ID3D12VideoProcessCommandList', 'ID3D12VideoProcessCommandList', ...) in case they are created with the base 'ID3D12CommandList' interface
+ 		if (type >= D3D12_COMMAND_LIST_TYPE_DIRECT && type <= D3D12_COMMAND_LIST_TYPE_COPY)
+ 		{
+-			const auto command_list_proxy = new D3D12GraphicsCommandList(this, static_cast<ID3D12GraphicsCommandList *>(*ppCommandList));
++			const auto command_list_proxy = new D3D12GraphicsCommandList(this, static_cast<ID3D12GraphicsCommandList *>(*ppCommandList), false);
+ 
+ 			// Upgrade to the actual interface version requested here (and only hook graphics command lists)
+ 			if (command_list_proxy->check_and_upgrade_interface(riid))
+@@ -1914,7 +1916,9 @@ void    STDMETHODCALLTYPE D3D12Device::CreateSampler2(const D3D12_SAMPLER_DESC2
+ 	const reshade::api::descriptor_table table = convert_to_descriptor_table(DestDescriptor);
+ 	DestDescriptor = convert_to_original_cpu_descriptor_handle(DestDescriptor);
+ #endif
++	auto metadata_operation = metadata_begin_sampler(pDesc != nullptr, DestDescriptor);
+ 	static_cast<ID3D12Device11 *>(_orig)->CreateSampler2(pDesc, DestDescriptor);
++	descriptor_metadata().finish(metadata_operation);
+ 
+ #if RESHADE_ADDON
+ 	const reshade::api::sampler descriptor_value = { DestDescriptor.ptr };
+@@ -2140,7 +2144,9 @@ HRESULT STDMETHODCALLTYPE D3D12Device::TryCreateSampler2(const D3D12_SAMPLER_DES
+ 	const reshade::api::descriptor_table table = convert_to_descriptor_table(DestDescriptor);
+ 	DestDescriptor = convert_to_original_cpu_descriptor_handle(DestDescriptor);
+ #endif
++	auto metadata_operation = metadata_begin_sampler(pDesc != nullptr, DestDescriptor);
+ 	const HRESULT hr = static_cast<ID3D12Device15 *>(_orig)->TryCreateSampler2(pDesc, DestDescriptor);
++	descriptor_metadata().finish(metadata_operation, SUCCEEDED(hr));
+ #if RESHADE_ADDON
+ 	if (SUCCEEDED(hr))
+ 	{
+@@ -2314,6 +2320,7 @@ void D3D12Device::invoke_init_resource_event(const reshade::api::resource_desc &
+ 	reshade::invoke_addon_event<reshade::addon_event::init_resource>(this, desc, nullptr, initial_state, to_handle(resource));
+ 
+ 	register_destruction_callback_d3dx(resource, [this, resource]() {
++		descriptor_metadata().remove_resource(reinterpret_cast<uint64_t>(resource));
+ 		reshade::invoke_addon_event<reshade::addon_event::destroy_resource>(this, to_handle(resource));
+ 		unregister_resource(resource);
+ 	});
+@@ -2972,6 +2979,7 @@ bool D3D12Device::invoke_create_and_init_pipeline_event(const D3D12_PIPELINE_STA
+ 
+ 	subobjects.push_back({ reshade::api::pipeline_subobject_type::dynamic_pipeline_states, static_cast<uint32_t>(dynamic_states.size()), dynamic_states.data() });
+ 
++	bool native_unmodified_route = false;
+ 	if (with_create_pipeline)
+ 	{
+ 		if (reshade::invoke_addon_event<reshade::addon_event::create_pipeline>(this, layout, static_cast<uint32_t>(subobjects.size()), subobjects.data()))
+@@ -2986,6 +2994,7 @@ bool D3D12Device::invoke_create_and_init_pipeline_event(const D3D12_PIPELINE_STA
+ 				return false;
+ 
+ 			hr = static_cast<ID3D12Device2 *>(_orig)->CreatePipelineState(&internal_desc, IID_PPV_ARGS(&d3d_pipeline));
++			native_unmodified_route = SUCCEEDED(hr);
+ 		}
+ 	}
+ 	else
+@@ -2996,7 +3005,11 @@ bool D3D12Device::invoke_create_and_init_pipeline_event(const D3D12_PIPELINE_STA
+ 
+ 	if (SUCCEEDED(hr))
+ 	{
+-		reshade::invoke_addon_event<reshade::addon_event::init_pipeline>(this, layout, static_cast<uint32_t>(subobjects.size()), subobjects.data(), to_handle(d3d_pipeline));
++		{
++			// Borrowed native stream is valid only during this synchronous callback.
++			reshade::d3d12::pipeline_clone::scope clone_scope(static_cast<reshade::api::device *>(this), _orig, d3d_pipeline, internal_desc, native_unmodified_route);
++			reshade::invoke_addon_event<reshade::addon_event::init_pipeline>(this, layout, static_cast<uint32_t>(subobjects.size()), subobjects.data(), to_handle(d3d_pipeline));
++		}
+ 
+ 		if (reshade::has_addon_event<reshade::addon_event::destroy_pipeline>())
+ 		{
+@@ -3333,3 +3346,30 @@ bool D3D12Device::invoke_create_and_init_pipeline_layout_event(UINT node_mask, c
+ }
+ 
+ #endif
++
++
++// Optional synchronous native PS-only clone. No API20 vtable or callback change.
++extern "C" __declspec(dllexport) bool ReShadeD3D12CloneCurrentPipelinePixelShaderV1(
++ void *api_device,uint64_t original_pipeline,const void *replacement_dxbc,
++ uint64_t replacement_bytes,rs_pipeline_clone_result_v1 *out)
++{
++ if(!out||out->size!=sizeof(*out)||out->version!=1||!api_device||!original_pipeline||!replacement_dxbc||replacement_bytes<4||replacement_bytes>1024*1024)return false;
++ rs_pipeline_clone_result_v1 r={};r.size=sizeof(r);r.version=1;r.original_pipeline=original_pipeline;
++ auto *ctx=reshade::d3d12::pipeline_clone::current;
++ if(!ctx||ctx->api_device!=api_device||reinterpret_cast<uint64_t>(ctx->original)!=original_pipeline){r.status=rs_clone_not_current;*out=r;return true;}
++ if(!ctx->permitted){r.status=rs_clone_modified_route;*out=r;return true;}
++ if(ctx->attempts>=4){r.status=rs_clone_budget;*out=r;return true;}
++ reshade::d3d12::pipeline_clone::prepared_stream prepared;
++ if(!reshade::d3d12::pipeline_clone::prepare(*ctx->source,replacement_dxbc,static_cast<size_t>(replacement_bytes),prepared)){r.status=rs_clone_unsupported_stream;*out=r;return true;}
++ r.stream_bytes=static_cast<uint32_t>(prepared.size);r.pixel_bytecode_offset=static_cast<uint32_t>(prepared.ps_offset);
++ r.original_vs_crc32=prepared.vs_crc;r.original_ps_crc32=prepared.ps_crc;r.replacement_ps_crc32=prepared.replacement_crc;r.non_ps_stream_crc32=prepared.non_ps_crc;r.non_ps_bytes_equal=prepared.equal;
++ ID3D12Device2 *native=nullptr;HRESULT hr=ctx->native_device->QueryInterface(IID_PPV_ARGS(&native));
++ if(SUCCEEDED(hr)){
++  ++ctx->attempts;ID3D12PipelineState *clone=nullptr;
++  const D3D12_PIPELINE_STATE_STREAM_DESC desc={prepared.size,prepared.bytes};
++  hr=native->CreatePipelineState(&desc,IID_PPV_ARGS(&clone));native->Release();
++  if(SUCCEEDED(hr)&&clone){r.clone_pipeline=reinterpret_cast<uint64_t>(clone);r.status=rs_clone_created;}
++  else {if(clone)clone->Release();r.status=rs_clone_native_failed;}
++ }else r.status=rs_clone_native_failed;
++ r.native_result=static_cast<int32_t>(hr);*out=r;return true;
++}
+diff --git a/source/d3d12/d3d12_graphics_root_snapshot.inl b/source/d3d12/d3d12_graphics_root_snapshot.inl
+new file mode 100644
+index 0000000..a0f2d77
+--- /dev/null
++++ b/source/d3d12/d3d12_graphics_root_snapshot.inl
+@@ -0,0 +1,65 @@
++// The wrapper and API20 implementation both route every existing native graphics
++// root/heap call through these helpers. Queries never invoke COM or GPU methods.
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_signature(ID3D12RootSignature *signature)
++{
++ auto tx=_graphics_root_state.begin(graphics_root_store::signature_write,reinterpret_cast<uint64_t>(signature));
++ _orig->SetGraphicsRootSignature(signature);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_descriptor_heaps(UINT count,ID3D12DescriptorHeap *const *objects)
++{
++ uint64_t identities[2]={},starts[2]={};uint32_t counts[2]={},increments[2]={},seen=0;
++ bool valid=count<=2&&(!count||objects);
++ auto *native_device=reinterpret_cast<ID3D12Device*>(_device->get_native());
++ for(UINT i=0;valid&&i<count;++i){
++  if(!objects[i]){valid=false;break;}
++  const auto desc=objects[i]->GetDesc();const auto type=static_cast<uint32_t>(desc.Type);
++  if(type>1||(seen&(1U<<type))||!(desc.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)){valid=false;break;}
++  seen|=1U<<type;identities[type]=reinterpret_cast<uint64_t>(objects[i]);starts[type]=objects[i]->GetGPUDescriptorHandleForHeapStart().ptr;
++  counts[type]=desc.NumDescriptors;increments[type]=native_device->GetDescriptorHandleIncrementSize(desc.Type);
++  if(!starts[type]||!counts[type]||!increments[type]||uint64_t(counts[type])*increments[type]>UINT64_MAX-starts[type])valid=false;
++ }
++ auto tx=_graphics_root_state.begin_heaps(identities,starts,counts,increments,valid);
++ _orig->SetDescriptorHeaps(count,objects);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_descriptor_table(UINT index,D3D12_GPU_DESCRIPTOR_HANDLE table)
++{
++ auto tx=_graphics_root_state.begin(graphics_root_store::parameter_write,table.ptr,index,rs_root_parameter_table);
++ _orig->SetGraphicsRootDescriptorTable(index,table);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_constant_buffer_view(UINT index,D3D12_GPU_VIRTUAL_ADDRESS address)
++{
++ auto tx=_graphics_root_state.begin(graphics_root_store::parameter_write,address,index,rs_root_parameter_cbv);
++ _orig->SetGraphicsRootConstantBufferView(index,address);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_shader_resource_view(UINT index,D3D12_GPU_VIRTUAL_ADDRESS address)
++{
++ auto tx=_graphics_root_state.begin(graphics_root_store::parameter_write,address,index,rs_root_parameter_srv);
++ _orig->SetGraphicsRootShaderResourceView(index,address);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_unordered_access_view(UINT index,D3D12_GPU_VIRTUAL_ADDRESS address)
++{
++ auto tx=_graphics_root_state.begin(graphics_root_store::parameter_write,address,index,rs_root_parameter_uav);
++ _orig->SetGraphicsRootUnorderedAccessView(index,address);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_32bit_constant(UINT index,UINT value,UINT offset)
++{
++ auto tx=_graphics_root_state.begin(graphics_root_store::parameter_write,0,index,rs_root_parameter_unknown);
++ _orig->SetGraphicsRoot32BitConstant(index,value,offset);_graphics_root_state.finish(tx);
++}
++void reshade::d3d12::command_list_impl::observed_set_graphics_root_32bit_constants(UINT index,UINT count,const void *values,UINT offset)
++{
++ if(!count){_orig->SetGraphicsRoot32BitConstants(index,count,values,offset);return;}
++ auto tx=_graphics_root_state.begin(graphics_root_store::parameter_write,0,index,rs_root_parameter_unknown);
++ _orig->SetGraphicsRoot32BitConstants(index,count,values,offset);_graphics_root_state.finish(tx);
++}
++bool reshade::d3d12::command_list_impl::query_graphics_root_state(uint64_t parameters,uint32_t heaps,rs_graphics_root_snapshot_v1 *out) const
++{
++ return _graphics_root_state.query(parameters,heaps,out);
++}
++extern "C" __declspec(dllexport) bool ReShadeD3D12QueryGraphicsRootStateV1(void *api_command_list,uint64_t parameters,uint32_t heaps,rs_graphics_root_snapshot_v1 *out)
++{
++ if(!api_command_list||!out||out->size!=sizeof(*out)||out->version!=1||(heaps&~3U))return false;
++ auto *base=static_cast<reshade::api::command_list*>(api_command_list);
++ if(base->get_device()->get_api()!=reshade::api::device_api::d3d12)return false;
++ return static_cast<reshade::d3d12::command_list_impl*>(base)->query_graphics_root_state(parameters,heaps,out);
++}
+diff --git a/source/d3d12/d3d12_ia_snapshot.inl b/source/d3d12/d3d12_ia_snapshot.inl
+new file mode 100644
+index 0000000..cb6ece7
+--- /dev/null
++++ b/source/d3d12/d3d12_ia_snapshot.inl
+@@ -0,0 +1,53 @@
++// Included once by d3d12_impl_command_list.cpp. No addon callbacks are emitted by
++// exact binding. Callers serialize native recording and own every resource.
++uint64_t reshade::d3d12::command_list_impl::next_ia_generation()
++{
++    static std::atomic<uint64_t> sequence { 1 };
++    auto value = sequence.load(std::memory_order_relaxed);
++    while (value != UINT64_MAX)
++        if (sequence.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
++    return 0; // Permanent exhaustion, never recycle a recording generation.
++}
++bool reshade::d3d12::command_list_impl::query_ia_snapshot(uint32_t mask, uint32_t require_index, rs_ia_snapshot_v1 *out) const
++{
++    return _ia_state.query(mask, require_index, out);
++}
++bool reshade::d3d12::command_list_impl::bind_ia_views(const rs_ia_binding_v1 &binding)
++{
++    static_assert(sizeof(rs_vertex_buffer_view_v1) == sizeof(D3D12_VERTEX_BUFFER_VIEW));
++    static_assert(sizeof(rs_index_buffer_view_v1) == sizeof(D3D12_INDEX_BUFFER_VIEW));
++    if (binding.size != sizeof(binding) || binding.version != 1 ||
++        binding.first_vertex_slot > 32 || binding.vertex_count > 32 - binding.first_vertex_slot ||
++        binding.bind_index > 1 || binding.index_present > 1 || !binding.expected_recording_generation)
++        return false;
++    if (!binding.vertex_count && !binding.bind_index)
++        return _ia_state.generation_matches(binding.expected_recording_generation);
++
++    // Own bounded value copy, not a retained caller pointer or resource reference.
++    const rs_ia_binding_v1 values = binding;
++    D3D12_VERTEX_BUFFER_VIEW native_views[32] = {};
++    D3D12_INDEX_BUFFER_VIEW native_index = {};
++    std::memcpy(native_views, values.vertex, values.vertex_count * sizeof(native_views[0]));
++    std::memcpy(&native_index, &values.index, sizeof(native_index));
++    auto mutation = _ia_state.begin(values.first_vertex_slot, values.vertex_count, values.vertex,
++        values.bind_index != 0, values.index_present != 0, &values.index,
++        values.expected_recording_generation, true);
++    if (!mutation.started()) return false;
++    if (values.vertex_count) _orig->IASetVertexBuffers(values.first_vertex_slot, values.vertex_count, native_views);
++    if (values.bind_index) _orig->IASetIndexBuffer(values.index_present ? &native_index : nullptr);
++    return _ia_state.finish(mutation);
++}
++extern "C" __declspec(dllexport) bool ReShadeD3D12QueryIASnapshotV1(void *api_command_list, uint32_t required_vertex_mask, uint32_t require_index, rs_ia_snapshot_v1 *out)
++{
++    if (!api_command_list || !out || out->size != sizeof(*out) || out->version != 1 || require_index > 1) return false;
++    auto *api_base = static_cast<reshade::api::command_list *>(api_command_list);
++    if (api_base->get_device()->get_api() != reshade::api::device_api::d3d12) return false;
++    return static_cast<reshade::d3d12::command_list_impl *>(api_base)->query_ia_snapshot(required_vertex_mask, require_index, out);
++}
++extern "C" __declspec(dllexport) bool ReShadeD3D12BindIAViewsV1(void *api_command_list, const rs_ia_binding_v1 *binding)
++{
++    if (!api_command_list || !binding || binding->size != sizeof(*binding) || binding->version != 1) return false;
++    auto *api_base = static_cast<reshade::api::command_list *>(api_command_list);
++    if (api_base->get_device()->get_api() != reshade::api::device_api::d3d12) return false;
++    return static_cast<reshade::d3d12::command_list_impl *>(api_base)->bind_ia_views(*binding);
++}
+diff --git a/source/d3d12/d3d12_impl_command_list.cpp b/source/d3d12/d3d12_impl_command_list.cpp
+index b35d645..6b8cd82 100644
+--- a/source/d3d12/d3d12_impl_command_list.cpp
++++ b/source/d3d12/d3d12_impl_command_list.cpp
+@@ -8,6 +8,7 @@
+ #include "d3d12_impl_type_convert.hpp"
+ #include "dll_log.hpp"
+ #include <cstring> // std::strlen, std::strncpy
++#include <atomic>
+ #include <algorithm> // std::copy_n, std::fill, std::max, std::min
+ 
+ void encode_pix3blob(UINT64(&pix3blob)[64], const char *label, const float color[4])
+@@ -319,10 +320,10 @@ void reshade::d3d12::command_list_impl::push_constants(api::shader_stage stages,
+ 		if (root_signature != _current_root_signature[0])
+ 		{
+ 			_current_root_signature[0] = root_signature;
+-			_orig->SetGraphicsRootSignature(root_signature);
++			observed_set_graphics_root_signature(root_signature);
+ 		}
+ 
+-		_orig->SetGraphicsRoot32BitConstants(layout_param, count, values, first);
++		observed_set_graphics_root_32bit_constants(layout_param, count, values, first);
+ 	}
+ }
+ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stages, api::pipeline_layout layout, uint32_t layout_param, const api::descriptor_table_update &update)
+@@ -351,7 +352,7 @@ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stage
+ 			if (root_signature != _current_root_signature[0])
+ 			{
+ 				_current_root_signature[0] = root_signature;
+-				_orig->SetGraphicsRootSignature(root_signature);
++				observed_set_graphics_root_signature(root_signature);
+ 			}
+ 		}
+ 
+@@ -365,7 +366,7 @@ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stage
+ 			if ((stages & (api::shader_stage::all_compute | api::shader_stage::all_ray_tracing)) != 0)
+ 				_orig->SetComputeRootConstantBufferView(layout_param, view_address);
+ 			if ((stages & api::shader_stage::all_graphics) != 0)
+-				_orig->SetGraphicsRootConstantBufferView(layout_param, view_address);
++				observed_set_graphics_root_constant_buffer_view(layout_param, view_address);
+ 		}
+ 		else if (update.type == api::descriptor_type::buffer_shader_resource_view || update.type == api::descriptor_type::acceleration_structure)
+ 		{
+@@ -375,7 +376,7 @@ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stage
+ 			if ((stages & (api::shader_stage::all_compute | api::shader_stage::all_ray_tracing)) != 0)
+ 				_orig->SetComputeRootShaderResourceView(layout_param, view_address);
+ 			if ((stages & api::shader_stage::all_graphics) != 0)
+-				_orig->SetGraphicsRootShaderResourceView(layout_param, view_address);
++				observed_set_graphics_root_shader_resource_view(layout_param, view_address);
+ 		}
+ 		else if (update.type == api::descriptor_type::buffer_unordered_access_view)
+ 		{
+@@ -385,7 +386,7 @@ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stage
+ 			if ((stages & (api::shader_stage::all_compute | api::shader_stage::all_ray_tracing)) != 0)
+ 				_orig->SetComputeRootUnorderedAccessView(layout_param, view_address);
+ 			if ((stages & api::shader_stage::all_graphics) != 0)
+-				_orig->SetGraphicsRootShaderResourceView(layout_param, view_address);
++				observed_set_graphics_root_shader_resource_view(layout_param, view_address);
+ 		}
+ 		return;
+ 	}
+@@ -460,7 +461,7 @@ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stage
+ 	{
+ 		ID3D12DescriptorHeap *const heaps[2] = { _device->_gpu_sampler_heap.get(), _device->_gpu_view_heap.get() };
+ 		std::copy_n(heaps, 2, _current_descriptor_heaps);
+-		_orig->SetDescriptorHeaps(2, heaps);
++		observed_set_descriptor_heaps(2, heaps);
+ 	}
+ 
+ #ifndef NDEBUG
+@@ -488,10 +489,10 @@ void reshade::d3d12::command_list_impl::push_descriptors(api::shader_stage stage
+ 		if (root_signature != _current_root_signature[0])
+ 		{
+ 			_current_root_signature[0] = root_signature;
+-			_orig->SetGraphicsRootSignature(root_signature);
++			observed_set_graphics_root_signature(root_signature);
+ 		}
+ 
+-		_orig->SetGraphicsRootDescriptorTable(layout_param, base_handle_gpu);
++		observed_set_graphics_root_descriptor_table(layout_param, base_handle_gpu);
+ 	}
+ }
+ void reshade::d3d12::command_list_impl::bind_descriptor_tables2(api::shader_stage stages, api::pipeline_layout layout, uint32_t first, uint32_t count, const api::descriptor_table *tables, uint32_t dynamic_offset_count, const uint32_t *dynamic_offsets)
+@@ -539,7 +540,7 @@ void reshade::d3d12::command_list_impl::bind_descriptor_tables2(api::shader_stag
+ 	{
+ 		std::copy_n(heaps, 2, _current_descriptor_heaps);
+ 		if (heaps[0] != nullptr)
+-			_orig->SetDescriptorHeaps(heaps[1] != nullptr ? 2 : 1, heaps);
++			observed_set_descriptor_heaps(heaps[1] != nullptr ? 2 : 1, heaps);
+ 	}
+ 
+ 	const auto root_signature = reinterpret_cast<ID3D12RootSignature *>(layout.handle);
+@@ -560,11 +561,11 @@ void reshade::d3d12::command_list_impl::bind_descriptor_tables2(api::shader_stag
+ 		if (root_signature != _current_root_signature[0] || count == 0)
+ 		{
+ 			_current_root_signature[0] = root_signature;
+-			_orig->SetGraphicsRootSignature(root_signature);
++			observed_set_graphics_root_signature(root_signature);
+ 		}
+ 
+ 		for (uint32_t i = 0; i < count; ++i)
+-			_orig->SetGraphicsRootDescriptorTable(first + i, _device->convert_to_original_gpu_descriptor_handle(tables[i]));
++			observed_set_graphics_root_descriptor_table(first + i, _device->convert_to_original_gpu_descriptor_handle(tables[i]));
+ 	}
+ }
+ 
+@@ -579,11 +580,16 @@ void reshade::d3d12::command_list_impl::bind_index_buffer(api::resource buffer,
+ 		view.Format = (index_size == 2) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+ 		view.SizeInBytes = static_cast<UINT>(reinterpret_cast<ID3D12Resource *>(buffer.handle)->GetDesc().Width - offset);
+ 
++		rs_index_buffer_view_v1 exact = {}; std::memcpy(&exact, &view, sizeof(exact));
++		auto ia_mutation = _ia_state.begin(0, 0, nullptr, true, true, &exact);
+ 		_orig->IASetIndexBuffer(&view);
++		_ia_state.finish(ia_mutation);
+ 	}
+ 	else
+ 	{
++		auto ia_mutation = _ia_state.begin(0, 0, nullptr, true, false, nullptr);
+ 		_orig->IASetIndexBuffer(nullptr);
++		_ia_state.finish(ia_mutation);
+ 	}
+ }
+ void reshade::d3d12::command_list_impl::bind_vertex_buffers(uint32_t first, uint32_t count, const api::resource *buffers, const uint64_t *offsets, const uint32_t *strides)
+@@ -600,7 +606,9 @@ void reshade::d3d12::command_list_impl::bind_vertex_buffers(uint32_t first, uint
+ 		views[i].StrideInBytes = strides[i];
+ 	}
+ 
++	auto ia_mutation = _ia_state.begin(first, count, reinterpret_cast<const rs_vertex_buffer_view_v1 *>(views.p), false, false, nullptr);
+ 	_orig->IASetVertexBuffers(first, count, views.p);
++	_ia_state.finish(ia_mutation);
+ }
+ void reshade::d3d12::command_list_impl::bind_stream_output_buffers(uint32_t first, uint32_t count, const api::resource *buffers, const uint64_t *offsets, const uint64_t *max_sizes, const api::resource *counter_buffers, const uint64_t *counter_offsets)
+ {
+@@ -952,7 +960,7 @@ void reshade::d3d12::command_list_impl::clear_unordered_access_view_uint(api::re
+ 
+ 	ID3D12DescriptorHeap *const view_heap = _device->_gpu_view_heap.get();
+ 	if (_current_descriptor_heaps[0] != view_heap && _current_descriptor_heaps[1] != view_heap)
+-		_orig->SetDescriptorHeaps(1, &view_heap);
++		observed_set_descriptor_heaps(1, &view_heap);
+ 
+ 	D3D12_UNORDERED_ACCESS_VIEW_DESC internal_desc = {};
+ 	convert_resource_view_desc(_device->get_resource_view_desc(uav), internal_desc);
+@@ -960,7 +968,7 @@ void reshade::d3d12::command_list_impl::clear_unordered_access_view_uint(api::re
+ 	_orig->ClearUnorderedAccessViewUint(table_base_gpu, D3D12_CPU_DESCRIPTOR_HANDLE { static_cast<SIZE_T>(uav.handle) }, reinterpret_cast<ID3D12Resource *>(resource.handle), values, rect_count, reinterpret_cast<const D3D12_RECT *>(rects));
+ 
+ 	if (_current_descriptor_heaps[0] != view_heap && _current_descriptor_heaps[1] != view_heap && _current_descriptor_heaps[0] != nullptr)
+-		_orig->SetDescriptorHeaps(_current_descriptor_heaps[1] != nullptr ? 2 : 1, _current_descriptor_heaps);
++		observed_set_descriptor_heaps(_current_descriptor_heaps[1] != nullptr ? 2 : 1, _current_descriptor_heaps);
+ }
+ void reshade::d3d12::command_list_impl::clear_unordered_access_view_float(api::resource_view uav, const float values[4], uint32_t rect_count, const api::rect *rects)
+ {
+@@ -980,7 +988,7 @@ void reshade::d3d12::command_list_impl::clear_unordered_access_view_float(api::r
+ 
+ 	ID3D12DescriptorHeap *const view_heap = _device->_gpu_view_heap.get();
+ 	if (_current_descriptor_heaps[0] != view_heap && _current_descriptor_heaps[1] != view_heap)
+-		_orig->SetDescriptorHeaps(1, &view_heap);
++		observed_set_descriptor_heaps(1, &view_heap);
+ 
+ 	D3D12_UNORDERED_ACCESS_VIEW_DESC internal_desc = {};
+ 	convert_resource_view_desc(_device->get_resource_view_desc(uav), internal_desc);
+@@ -988,7 +996,7 @@ void reshade::d3d12::command_list_impl::clear_unordered_access_view_float(api::r
+ 	_orig->ClearUnorderedAccessViewFloat(table_base_gpu, D3D12_CPU_DESCRIPTOR_HANDLE { static_cast<SIZE_T>(uav.handle) }, reinterpret_cast<ID3D12Resource *>(resource.handle), values, rect_count, reinterpret_cast<const D3D12_RECT *>(rects));
+ 
+ 	if (_current_descriptor_heaps[0] != view_heap && _current_descriptor_heaps[1] != view_heap && _current_descriptor_heaps[0] != nullptr)
+-		_orig->SetDescriptorHeaps(_current_descriptor_heaps[1] != nullptr ? 2 : 1, _current_descriptor_heaps);
++		observed_set_descriptor_heaps(_current_descriptor_heaps[1] != nullptr ? 2 : 1, _current_descriptor_heaps);
+ }
+ 
+ void reshade::d3d12::command_list_impl::generate_mipmaps(api::resource_view srv)
+@@ -1042,7 +1050,7 @@ void reshade::d3d12::command_list_impl::generate_mipmaps(api::resource_view srv)
+ 	{
+ 		ID3D12DescriptorHeap *const heaps[2] = { _device->_gpu_sampler_heap.get(), _device->_gpu_view_heap.get() };
+ 		std::copy_n(heaps, 2, _current_descriptor_heaps);
+-		_orig->SetDescriptorHeaps(2, heaps);
++		observed_set_descriptor_heaps(2, heaps);
+ 	}
+ 
+ 	_orig->SetComputeRootSignature(_device->_mipmap_signature.get());
+@@ -1235,3 +1243,7 @@ void reshade::d3d12::command_list_impl::insert_debug_marker(const char *label, c
+ 	_orig->SetMarker(2, pix3blob, sizeof(pix3blob));
+ #endif
+ }
++
++#include "d3d12_ia_snapshot.inl"
++
++#include "d3d12_graphics_root_snapshot.inl"
+diff --git a/source/d3d12/d3d12_impl_command_list.hpp b/source/d3d12/d3d12_impl_command_list.hpp
+index c9b3fa8..c1d6876 100644
+--- a/source/d3d12/d3d12_impl_command_list.hpp
++++ b/source/d3d12/d3d12_impl_command_list.hpp
+@@ -7,6 +7,8 @@
+ 
+ #include <d3d12.h>
+ #include "reshade_api_object_impl.hpp"
++#include "ia_state_model.hpp"
++#include "graphics_root_model.hpp"
+ 
+ namespace reshade::d3d12
+ {
+@@ -18,6 +20,9 @@ namespace reshade::d3d12
+ 		command_list_impl(device_impl *device, ID3D12GraphicsCommandList *cmd_list);
+ 
+ 		api::device *get_device() final;
++		bool query_ia_snapshot(uint32_t required_mask, uint32_t require_index, rs_ia_snapshot_v1 *out) const;
++		bool bind_ia_views(const rs_ia_binding_v1 &binding);
++		bool query_graphics_root_state(uint64_t parameters, uint32_t heaps, rs_graphics_root_snapshot_v1 *out) const;
+ 
+ 		void barrier(uint32_t count, const api::resource *resources, const api::resource_usage *old_states, const api::resource_usage *new_states) final;
+ 
+@@ -76,6 +81,17 @@ namespace reshade::d3d12
+ 
+ 	protected:
+ 		void on_init();
++		static uint64_t next_ia_generation();
++		ia_state_store _ia_state;
++		graphics_root_store _graphics_root_state;
++		void observed_set_graphics_root_signature(ID3D12RootSignature *signature);
++		void observed_set_descriptor_heaps(UINT count, ID3D12DescriptorHeap *const *heaps);
++		void observed_set_graphics_root_descriptor_table(UINT index, D3D12_GPU_DESCRIPTOR_HANDLE table);
++		void observed_set_graphics_root_constant_buffer_view(UINT index, D3D12_GPU_VIRTUAL_ADDRESS address);
++		void observed_set_graphics_root_shader_resource_view(UINT index, D3D12_GPU_VIRTUAL_ADDRESS address);
++		void observed_set_graphics_root_unordered_access_view(UINT index, D3D12_GPU_VIRTUAL_ADDRESS address);
++		void observed_set_graphics_root_32bit_constant(UINT index, UINT value, UINT offset);
++		void observed_set_graphics_root_32bit_constants(UINT index, UINT count, const void *values, UINT offset);
+ 
+ 		device_impl *const _device;
+ 
+diff --git a/source/d3d12/d3d12_impl_device.cpp b/source/d3d12/d3d12_impl_device.cpp
+index b1bbfc0..d0a2702 100644
+--- a/source/d3d12/d3d12_impl_device.cpp
++++ b/source/d3d12/d3d12_impl_device.cpp
+@@ -81,9 +81,9 @@ reshade::d3d12::device_impl::device_impl(ID3D12Device *device) :
+ 	_descriptor_heaps.reserve(4096);
+ 
+ 	const auto gpu_view_heap = new D3D12DescriptorHeap(device, _gpu_view_heap.get());
+-	register_descriptor_heap(gpu_view_heap);
++	register_descriptor_heap(gpu_view_heap, false);
+ 	const auto gpu_sampler_heap = new D3D12DescriptorHeap(device, _gpu_sampler_heap.get());
+-	register_descriptor_heap(gpu_sampler_heap);
++	register_descriptor_heap(gpu_sampler_heap, false);
+ 
+ 	assert(_descriptor_heaps.size() == 2);
+ #endif
+@@ -292,7 +292,9 @@ bool reshade::d3d12::device_impl::create_sampler(const api::sampler_desc &desc,
+ 	D3D12_SAMPLER_DESC internal_desc = {};
+ 	convert_sampler_desc(desc, internal_desc);
+ 
++	auto metadata_operation = metadata_begin_sampler(true, descriptor_handle, true);
+ 	_orig->CreateSampler(&internal_desc, descriptor_handle);
++	_descriptor_metadata.finish(metadata_operation);
+ 
+ 	*out_sampler = { descriptor_handle.ptr };
+ 	return true;
+@@ -302,6 +304,7 @@ void reshade::d3d12::device_impl::destroy_sampler(api::sampler sampler)
+ 	if (sampler == 0)
+ 		return;
+ 
++	_descriptor_metadata.remove_internal_view(sampler.handle);
+ 	_view_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER].free({ static_cast<SIZE_T>(sampler.handle) });
+ }
+ 
+@@ -512,7 +515,9 @@ bool reshade::d3d12::device_impl::create_resource_view(api::resource resource, a
+ 			internal_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+ 			convert_resource_view_desc(desc, internal_desc);
+ 
++			auto metadata_operation = metadata_begin_srv(reinterpret_cast<ID3D12Resource *>(resource.handle), desc.type != api::resource_view_type::unknown ? &internal_desc : nullptr, descriptor_handle, true);
+ 			_orig->CreateShaderResourceView(reinterpret_cast<ID3D12Resource *>(resource.handle), desc.type != api::resource_view_type::unknown ? &internal_desc : nullptr, descriptor_handle);
++			_descriptor_metadata.finish(metadata_operation);
+ 
+ 			register_resource_view(descriptor_handle, reinterpret_cast<ID3D12Resource *>(resource.handle), desc);
+ 			*out_view = to_handle(descriptor_handle);
+@@ -527,7 +532,9 @@ bool reshade::d3d12::device_impl::create_resource_view(api::resource resource, a
+ 			D3D12_UNORDERED_ACCESS_VIEW_DESC internal_desc = {};
+ 			convert_resource_view_desc(desc, internal_desc);
+ 
++			auto metadata_operation = metadata_begin_uav(reinterpret_cast<ID3D12Resource *>(resource.handle), desc.type != api::resource_view_type::unknown ? &internal_desc : nullptr, descriptor_handle, true);
+ 			_orig->CreateUnorderedAccessView(reinterpret_cast<ID3D12Resource *>(resource.handle), nullptr, desc.type != api::resource_view_type::unknown ? &internal_desc : nullptr, descriptor_handle);
++			_descriptor_metadata.finish(metadata_operation);
+ 
+ 			register_resource_view(descriptor_handle, reinterpret_cast<ID3D12Resource *>(resource.handle), desc);
+ 			*out_view = to_handle(descriptor_handle);
+@@ -556,6 +563,7 @@ bool reshade::d3d12::device_impl::create_resource_view(api::resource resource, a
+ }
+ void reshade::d3d12::device_impl::destroy_resource_view(api::resource_view view)
+ {
++	_descriptor_metadata.remove_internal_view(view.handle);
+ 	if (view == 0)
+ 		return;
+ 
+@@ -1726,7 +1734,9 @@ void reshade::d3d12::device_impl::copy_descriptor_tables(uint32_t count, const a
+ 		D3D12_CPU_DESCRIPTOR_HANDLE src_range_start = convert_to_original_cpu_descriptor_handle(copy.source_table, &heap_type);
+ 		src_range_start = offset_descriptor_handle(src_range_start, copy.source_binding, heap_type);
+ 
++		auto metadata_operation = metadata_begin_copy(1, &dst_range_start, &copy.count, 1, &src_range_start, &copy.count, heap_type);
+ 		_orig->CopyDescriptorsSimple(copy.count, dst_range_start, src_range_start, heap_type);
++		_descriptor_metadata.finish(metadata_operation);
+ 	}
+ }
+ void reshade::d3d12::device_impl::update_descriptor_tables(uint32_t count, const api::descriptor_table_update *updates)
+@@ -1754,7 +1764,9 @@ void reshade::d3d12::device_impl::update_descriptor_tables(uint32_t count, const
+ 				view_desc.BufferLocation = get_resource_gpu_address(view_range.buffer) + view_range.offset;
+ 				view_desc.SizeInBytes = static_cast<UINT>(view_range.size == UINT64_MAX ? reinterpret_cast<ID3D12Resource *>(view_range.buffer.handle)->GetDesc().Width - view_range.offset : view_range.size);
+ 
++				auto metadata_operation = metadata_begin_cbv(&view_desc, dst_range_start);
+ 				_orig->CreateConstantBufferView(&view_desc, dst_range_start);
++				_descriptor_metadata.finish(metadata_operation);
+ 			}
+ 		}
+ 		else if (
+@@ -1770,14 +1782,18 @@ void reshade::d3d12::device_impl::update_descriptor_tables(uint32_t count, const
+ 			for (UINT k = 0; k < update.count; ++k)
+ 				src_handles[k] = { static_cast<SIZE_T>(static_cast<const uint64_t *>(update.descriptors)[k]) };
+ 
++			auto metadata_operation = metadata_begin_copy(1, &dst_range_start, &update.count, update.count, src_handles.data(), nullptr, heap_type);
+ 			_orig->CopyDescriptors(1, &dst_range_start, &update.count, update.count, src_handles.data(), &src_range_size, heap_type);
++			_descriptor_metadata.finish(metadata_operation);
+ #else
+ 			static_assert(
+ 				sizeof(D3D12_CPU_DESCRIPTOR_HANDLE) == sizeof(api::sampler) &&
+ 				sizeof(D3D12_CPU_DESCRIPTOR_HANDLE) == sizeof(api::resource_view));
+ 
+ 			std::vector<UINT> src_range_sizes(update.count, 1);
++			auto metadata_operation = metadata_begin_copy(1, &dst_range_start, &update.count, update.count, static_cast<const D3D12_CPU_DESCRIPTOR_HANDLE *>(update.descriptors), src_range_sizes.data(), heap_type);
+ 			_orig->CopyDescriptors(1, &dst_range_start, &update.count, update.count, static_cast<const D3D12_CPU_DESCRIPTOR_HANDLE *>(update.descriptors), src_range_sizes.data(), heap_type);
++			_descriptor_metadata.finish(metadata_operation);
+ #endif
+ 		}
+ 		else if (update.type == api::descriptor_type::acceleration_structure)
+@@ -1790,7 +1806,9 @@ void reshade::d3d12::device_impl::update_descriptor_tables(uint32_t count, const
+ 				view_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+ 				view_desc.RaytracingAccelerationStructure.Location = static_cast<const api::resource_view *>(update.descriptors)[k].handle;
+ 
++				auto metadata_operation = metadata_begin_srv(nullptr, &view_desc, dst_range_start);
+ 				_orig->CreateShaderResourceView(nullptr, &view_desc, dst_range_start);
++				_descriptor_metadata.finish(metadata_operation);
+ 			}
+ 		}
+ 		else
+@@ -2107,6 +2125,8 @@ bool reshade::d3d12::device_impl::get_pipeline_shader_group_handles(api::pipelin
+ void reshade::d3d12::device_impl::register_resource(ID3D12Resource *resource, [[maybe_unused]] bool acceleration_structure)
+ {
+ 	assert(resource != nullptr);
++	const auto metadata_desc = resource->GetDesc();
++	_descriptor_metadata.add_resource(reinterpret_cast<uint64_t>(resource), metadata_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ? metadata_desc.Width : 0);
+ 
+ #if RESHADE_ADDON >= 2
+ 	if (const D3D12_RESOURCE_DESC desc = resource->GetDesc();
+@@ -2128,6 +2148,7 @@ void reshade::d3d12::device_impl::register_resource(ID3D12Resource *resource, [[
+ void reshade::d3d12::device_impl::unregister_resource(ID3D12Resource *resource)
+ {
+ 	assert(resource != nullptr);
++	_descriptor_metadata.remove_resource(reinterpret_cast<uint64_t>(resource));
+ 
+ #if RESHADE_ADDON >= 2
+ 	if (const D3D12_RESOURCE_DESC desc = resource->GetDesc();
+@@ -2231,11 +2252,14 @@ bool reshade::d3d12::device_impl::resolve_gpu_address(D3D12_GPU_VIRTUAL_ADDRESS
+ 	return true;
+ }
+ 
+-void reshade::d3d12::device_impl::register_descriptor_heap(D3D12DescriptorHeap *heap)
++void reshade::d3d12::device_impl::register_descriptor_heap(D3D12DescriptorHeap *heap, bool metadata_queryable)
+ {
+ 	const auto it = _descriptor_heaps.push_back(heap);
+ 
+ 	heap->initialize_descriptor_base_handle(std::distance(_descriptor_heaps.begin(), it));
++	heap->_metadata_owner = this;
++	const auto metadata_desc = heap->_orig->GetDesc();
++	heap->_metadata_generation = _descriptor_metadata.add_heap(heap->_orig_base_cpu_handle.ptr, heap->_orig_base_gpu_handle.ptr, heap->_internal_base_cpu_handle.ptr, metadata_desc.NumDescriptors, _descriptor_handle_size[metadata_desc.Type], metadata_desc.Type, metadata_queryable);
+ 
+ 	const D3D12_DESCRIPTOR_HEAP_DESC desc = heap->_orig->GetDesc();
+ 
+@@ -2248,6 +2272,10 @@ void reshade::d3d12::device_impl::register_descriptor_heap(D3D12DescriptorHeap *
+ }
+ void reshade::d3d12::device_impl::unregister_descriptor_heap(D3D12DescriptorHeap *heap)
+ {
++	if (heap->_metadata_owner != this) return;
++	_descriptor_metadata.remove_heap(heap->_metadata_generation);
++	heap->_metadata_owner = nullptr;
++	heap->_metadata_generation = 0;
+ 	size_t num_heaps = _descriptor_heaps.size();
+ 
+ 	for (size_t heap_index = 0; heap_index < num_heaps; ++heap_index)
+@@ -2271,7 +2299,8 @@ void reshade::d3d12::device_impl::unregister_descriptor_heap(D3D12DescriptorHeap
+ 
+ 	const std::unique_lock<std::shared_mutex> lock(_heap_gpu_ranges_mutex);
+ 
+-	_heap_gpu_ranges.erase(heap->_orig_base_gpu_handle.ptr);
++	const auto it = _heap_gpu_ranges.find(heap->_orig_base_gpu_handle.ptr);
++	if (it != _heap_gpu_ranges.end() && it->second.second == heap) _heap_gpu_ranges.erase(it);
+ }
+ 
+ void D3D12DescriptorHeap::initialize_descriptor_base_handle(size_t heap_index)
+@@ -2402,3 +2431,5 @@ D3D12_GPU_DESCRIPTOR_HANDLE reshade::d3d12::device_impl::convert_to_original_gpu
+ 
+ 	return { table.handle };
+ }
++
++#include "d3d12_descriptor_metadata.inl"
+diff --git a/source/d3d12/d3d12_impl_device.hpp b/source/d3d12/d3d12_impl_device.hpp
+index d00304f..e7b96e2 100644
+--- a/source/d3d12/d3d12_impl_device.hpp
++++ b/source/d3d12/d3d12_impl_device.hpp
+@@ -4,6 +4,7 @@
+  */
+ 
+ #pragma once
++#include "d3d12_descriptor_metadata.hpp"
+ 
+ #include "descriptor_heap.hpp"
+ #include "reshade_api_object_impl.hpp"
+@@ -137,7 +138,16 @@ namespace reshade::d3d12
+ 			return handle;
+ 		}
+ 
++	public:
++		bool query_descriptor_metadata(uint64_t table, uint32_t binding, uint32_t array_offset, rs_descriptor_metadata_v1 *out) const { return _descriptor_metadata.query(table, binding, array_offset, out); }
++		void retire_descriptor_heap(D3D12DescriptorHeap *heap) { unregister_descriptor_heap(heap); }
+ 	protected:
++		descriptor_metadata_store &descriptor_metadata() { return _descriptor_metadata; }
++		descriptor_metadata_store::transaction metadata_begin_srv(ID3D12Resource *, const D3D12_SHADER_RESOURCE_VIEW_DESC *, D3D12_CPU_DESCRIPTOR_HANDLE, bool internal = false);
++		descriptor_metadata_store::transaction metadata_begin_uav(ID3D12Resource *, const D3D12_UNORDERED_ACCESS_VIEW_DESC *, D3D12_CPU_DESCRIPTOR_HANDLE, bool internal = false);
++		descriptor_metadata_store::transaction metadata_begin_cbv(const D3D12_CONSTANT_BUFFER_VIEW_DESC *, D3D12_CPU_DESCRIPTOR_HANDLE);
++		descriptor_metadata_store::transaction metadata_begin_sampler(bool has_desc, D3D12_CPU_DESCRIPTOR_HANDLE, bool internal = false);
++		descriptor_metadata_store::transaction metadata_begin_copy(UINT, const D3D12_CPU_DESCRIPTOR_HANDLE *, const UINT *, UINT, const D3D12_CPU_DESCRIPTOR_HANDLE *, const UINT *, D3D12_DESCRIPTOR_HEAP_TYPE);
+ 		void register_resource(ID3D12Resource *resource, [[maybe_unused]] bool acceleration_structure);
+ 		void unregister_resource(ID3D12Resource *resource);
+ 
+@@ -145,7 +155,7 @@ namespace reshade::d3d12
+ 		void register_resource_view(D3D12_CPU_DESCRIPTOR_HANDLE handle, D3D12_CPU_DESCRIPTOR_HANDLE source_handle);
+ 
+ #if RESHADE_ADDON >= 2
+-		void register_descriptor_heap(D3D12DescriptorHeap *heap);
++		void register_descriptor_heap(D3D12DescriptorHeap *heap, bool metadata_queryable = true);
+ 		void unregister_descriptor_heap(D3D12DescriptorHeap *heap);
+ #endif
+ 
+@@ -158,6 +168,7 @@ namespace reshade::d3d12
+ 		descriptor_heap_gpu<D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 128, 128> _gpu_sampler_heap;
+ 		descriptor_heap_gpu<D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 50000, 2048> _gpu_view_heap;
+ 
++		descriptor_metadata_store _descriptor_metadata;
+ 		mutable std::shared_mutex _resource_mutex;
+ #if RESHADE_ADDON >= 2
+ 		concurrency::concurrent_vector<D3D12DescriptorHeap *> _descriptor_heaps;
+diff --git a/source/d3d12/d3d12_pipeline_clone.hpp b/source/d3d12/d3d12_pipeline_clone.hpp
+new file mode 100644
+index 0000000..56eaec1
+--- /dev/null
++++ b/source/d3d12/d3d12_pipeline_clone.hpp
+@@ -0,0 +1,74 @@
++#pragma once
++#include "d3d12_impl_type_convert.hpp"
++#include "../../include/pipeline_clone_v1.h"
++#include <cstring>
++#include <cstddef>
++
++namespace reshade::d3d12::pipeline_clone {
++inline uint32_t crc32(const void *data,size_t size) noexcept {
++ uint32_t c=~0U;const auto p=static_cast<const unsigned char*>(data);
++ for(size_t i=0;i<size;++i){c^=p[i];for(unsigned j=0;j<8;++j)c=(c>>1)^((c&1)?0xedb88320U:0);}return ~c;
++}
++struct prepared_stream {
++ alignas(void*) unsigned char bytes[8192]={};size_t size=0,ps_offset=0;
++ uint32_t vs_crc=0,ps_crc=0,replacement_crc=0,non_ps_crc=0;
++ bool equal=false;
++};
++inline bool prepare(const D3D12_PIPELINE_STATE_STREAM_DESC &source,const void *replacement,size_t replacement_size,prepared_stream &out) noexcept {
++ out.size=0;out.equal=false;
++ if(!source.pPipelineStateSubobjectStream||source.SizeInBytes==0||source.SizeInBytes>sizeof(out.bytes)||source.SizeInBytes%alignof(void*)||!replacement||replacement_size<4||replacement_size>1024*1024||std::memcmp(replacement,"DXBC",4))return false;
++ const auto input=static_cast<const unsigned char*>(source.pPipelineStateSubobjectStream);
++ size_t offset=0,ps_offset=0;uint64_t seen=0;bool vs=false,ps=false,root=false;
++ while(offset<source.SizeInBytes){
++  if(source.SizeInBytes-offset<sizeof(uint32_t))return false;
++  uint32_t type=0;std::memcpy(&type,input+offset,sizeof(type));if(type>=64||(seen&(uint64_t(1)<<type)))return false;seen|=uint64_t(1)<<type;
++  size_t size=0;
++#define RS_CLONE_FIELD(T,N) case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_##T: size=sizeof(D3D12_PIPELINE_STATE_STREAM_##N);break
++  switch(type){
++   RS_CLONE_FIELD(ROOT_SIGNATURE,ROOT_SIGNATURE);RS_CLONE_FIELD(VS,VS);RS_CLONE_FIELD(PS,PS);
++   RS_CLONE_FIELD(DS,DS);RS_CLONE_FIELD(HS,HS);RS_CLONE_FIELD(GS,GS);
++   RS_CLONE_FIELD(STREAM_OUTPUT,STREAM_OUTPUT);RS_CLONE_FIELD(BLEND,BLEND_DESC);
++   RS_CLONE_FIELD(SAMPLE_MASK,SAMPLE_MASK);RS_CLONE_FIELD(RASTERIZER,RASTERIZER);
++   RS_CLONE_FIELD(DEPTH_STENCIL,DEPTH_STENCIL);RS_CLONE_FIELD(INPUT_LAYOUT,INPUT_LAYOUT);
++   RS_CLONE_FIELD(IB_STRIP_CUT_VALUE,IB_STRIP_CUT_VALUE);RS_CLONE_FIELD(PRIMITIVE_TOPOLOGY,PRIMITIVE_TOPOLOGY);
++   RS_CLONE_FIELD(RENDER_TARGET_FORMATS,RENDER_TARGET_FORMATS);RS_CLONE_FIELD(DEPTH_STENCIL_FORMAT,DEPTH_STENCIL_FORMAT);
++   RS_CLONE_FIELD(SAMPLE_DESC,SAMPLE_DESC);RS_CLONE_FIELD(NODE_MASK,NODE_MASK);RS_CLONE_FIELD(CACHED_PSO,CACHED_PSO);
++   RS_CLONE_FIELD(FLAGS,FLAGS);RS_CLONE_FIELD(DEPTH_STENCIL1,DEPTH_STENCIL1);RS_CLONE_FIELD(VIEW_INSTANCING,VIEW_INSTANCING);
++   RS_CLONE_FIELD(DEPTH_STENCIL2,DEPTH_STENCIL2);RS_CLONE_FIELD(RASTERIZER1,RASTERIZER1);RS_CLONE_FIELD(RASTERIZER2,RASTERIZER2);
++   default:return false;
++  }
++#undef RS_CLONE_FIELD
++  if(!size||size>source.SizeInBytes-offset)return false;
++  // Copy before reading typed fields so malformed source alignment cannot cause
++  // an unaligned struct dereference. Only the native top-level byte block moves.
++  std::memcpy(out.bytes+offset,input+offset,size);
++  if(type==D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE){ID3D12RootSignature *r=nullptr;std::memcpy(&r,out.bytes+offset+offsetof(D3D12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE,data),sizeof(r));root=r!=nullptr;}
++  if(type==D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO){D3D12_CACHED_PIPELINE_STATE c={};std::memcpy(&c,out.bytes+offset+offsetof(D3D12_PIPELINE_STATE_STREAM_CACHED_PSO,data),sizeof(c));if(c.CachedBlobSizeInBytes||c.pCachedBlob)return false;}
++  if(type==D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS||type==D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS){
++   static_assert(offsetof(D3D12_PIPELINE_STATE_STREAM_VS,data)==offsetof(D3D12_PIPELINE_STATE_STREAM_PS,data));
++   D3D12_SHADER_BYTECODE code={};std::memcpy(&code,out.bytes+offset+offsetof(D3D12_PIPELINE_STATE_STREAM_PS,data),sizeof(code));
++   if(!code.pShaderBytecode||code.BytecodeLength<4||code.BytecodeLength>1024*1024||std::memcmp(code.pShaderBytecode,"DXBC",4))return false;
++   if(type==D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS){vs=true;out.vs_crc=crc32(code.pShaderBytecode,code.BytecodeLength);}
++   else{ps=true;ps_offset=offset+offsetof(D3D12_PIPELINE_STATE_STREAM_PS,data);out.ps_crc=crc32(code.pShaderBytecode,code.BytecodeLength);}
++  }
++  offset+=size;
++ }
++ if(!root||!vs||!ps||offset!=source.SizeInBytes)return false;
++ const D3D12_SHADER_BYTECODE code={replacement,replacement_size};std::memcpy(out.bytes+ps_offset,&code,sizeof(code));
++ out.equal=std::memcmp(input,out.bytes,ps_offset)==0&&std::memcmp(input+ps_offset+sizeof(code),out.bytes+ps_offset+sizeof(code),source.SizeInBytes-ps_offset-sizeof(code))==0;
++ if(!out.equal)return false;
++ // CRC is over the exact stream with the PS pointer/length masked to zero.
++ unsigned char saved[sizeof(code)];std::memcpy(saved,out.bytes+ps_offset,sizeof(saved));std::memset(out.bytes+ps_offset,0,sizeof(code));out.non_ps_crc=crc32(out.bytes,source.SizeInBytes);std::memcpy(out.bytes+ps_offset,saved,sizeof(saved));
++ out.ps_offset=ps_offset;out.size=source.SizeInBytes;out.replacement_crc=crc32(replacement,replacement_size);return true;
++}
++struct context {
++ void *api_device=nullptr;ID3D12Device *native_device=nullptr;ID3D12PipelineState *original=nullptr;
++ const D3D12_PIPELINE_STATE_STREAM_DESC *source=nullptr;bool permitted=false;unsigned attempts=0;
++};
++inline thread_local context *current=nullptr;
++struct scope {
++ context state;context *previous;
++ scope(void *api,ID3D12Device *native,ID3D12PipelineState *pipeline,const D3D12_PIPELINE_STATE_STREAM_DESC &source,bool permitted) noexcept:state{api,native,pipeline,&source,permitted,0},previous(current){current=&state;}
++ ~scope(){current=previous;}
++};
++}
+diff --git a/source/d3d12/descriptor_metadata_v1.h b/source/d3d12/descriptor_metadata_v1.h
+new file mode 100644
+index 0000000..d0fe0b1
+--- /dev/null
++++ b/source/d3d12/descriptor_metadata_v1.h
+@@ -0,0 +1,58 @@
++#pragma once
++#include <stdint.h>
++
++// Optional fork extension. It does not change the ReShade API20 ABI.
++// Call only while the api::device pointer is valid (for example in a callback).
++// This copies metadata and returns no ownership of resources or heaps.
++// Neither a successful query nor native-call completion proves GPU consumption.
++enum rs_descriptor_status_v1 : uint32_t
++{
++    rs_descriptor_unknown = 0,
++    rs_descriptor_known = 1,
++    rs_descriptor_null = 2,
++    rs_descriptor_busy = 3,
++    rs_descriptor_capacity = 4,
++    rs_descriptor_invalid = 5,
++    rs_descriptor_dead = 6,
++    rs_descriptor_unsupported = 7,
++};
++enum rs_descriptor_kind_v1 : uint32_t
++{
++    rs_descriptor_kind_unknown = 0,
++    rs_descriptor_srv = 1,
++    rs_descriptor_uav = 2,
++    rs_descriptor_cbv = 3,
++    rs_descriptor_sampler = 4,
++    rs_descriptor_rtv = 5,
++    rs_descriptor_dsv = 6,
++};
++struct rs_descriptor_metadata_v1
++{
++    uint32_t size;              // Caller sets sizeof(rs_descriptor_metadata_v1).
++    uint32_t version;           // Caller sets 1. Unsupported size/version rejected.
++    uint32_t status;
++    uint32_t kind;
++    uint32_t heap_type;         // Native D3D12_DESCRIPTOR_HEAP_TYPE.
++    uint32_t view_dimension;    // Native SRV/UAV dimension when applicable.
++    uint32_t format;            // Native DXGI_FORMAT.
++    uint32_t stride;            // Structured buffer byte stride; otherwise zero.
++    uint64_t heap_generation;
++    uint64_t resource_generation;
++    uint64_t mutation_epoch;
++    uint64_t slot_epoch;
++    uint64_t heap_slot;
++    uint64_t resource_identity; // Identity only. Do not dereference/AddRef this result.
++    uint64_t resource_size;     // Buffer bytes, zero for non-buffer/unknown.
++    uint64_t offset_bytes;
++    uint64_t element_count;
++    uint64_t range_bytes;
++};
++static_assert(sizeof(rs_descriptor_metadata_v1) == 112, "Stable x64 optional ABI");
++// Export signature (C linkage, __cdecl):
++// bool ReShadeD3D12QueryDescriptorMetadataV1(void *api_device,
++//     uint64_t table, uint32_t binding, uint32_t array_offset,
++//     rs_descriptor_metadata_v1 *out_metadata);
++// false = invalid arguments, unsupported size/version, or non-D3D12 device.
++// true = query processed; inspect status. Only known+srv+structured stride16
++// and caller-validated layout/range/generation is a palette metadata candidate.
++// No API20 getter fallback is permitted for unknown/busy/capacity/dead states.
+diff --git a/source/d3d12/graphics_root_model.hpp b/source/d3d12/graphics_root_model.hpp
+new file mode 100644
+index 0000000..8cab822
+--- /dev/null
++++ b/source/d3d12/graphics_root_model.hpp
+@@ -0,0 +1,74 @@
++#pragma once
++#include "graphics_root_snapshot_v1.h"
++#include <mutex>
++#include <cstring>
++
++namespace reshade::d3d12 {
++class graphics_root_store {
++ mutable std::mutex gate;
++ bool enabled=false,recording=false,destroyed=false,poisoned=false;
++ uint32_t type=0,active=0;uint64_t generation=0,epoch=0;
++ bool signature_known=false;uint64_t signature=0,signature_epoch=0,heap_epoch=0,known=0;
++ uint32_t heaps_known=0;
++ uint64_t heaps[2]={},starts[2]={};uint32_t counts[2]={},increments[2]={};
++ rs_graphics_root_parameter_v1 parameters[64]={};
++ void unknown(){signature_known=false;signature=signature_epoch=heap_epoch=known=0;heaps_known=0;std::memset(heaps,0,sizeof(heaps));std::memset(starts,0,sizeof(starts));std::memset(counts,0,sizeof(counts));std::memset(increments,0,sizeof(increments));std::memset(parameters,0,sizeof(parameters));}
++ bool advance(){if(epoch==UINT64_MAX){poisoned=true;unknown();return false;}++epoch;return true;}
++ void clear_tables(){for(unsigned i=0;i<64;++i)if(parameters[i].kind==rs_root_parameter_table){known&=~(uint64_t(1)<<i);parameters[i]={};}}
++public:
++ enum action:uint32_t {signature_write,heaps_write,parameter_write,make_unknown,reset};
++ struct operation {
++  graphics_root_store *owner=nullptr;action what=make_unknown;uint64_t generation=0,token=0,value=0;
++  uint32_t index=0,kind=0;uint64_t heaps[2]={},starts[2]={};uint32_t counts[2]={},increments[2]={};
++  operation()=default;operation(const operation&)=delete;operation&operator=(const operation&)=delete;
++  operation(operation&&o)noexcept:owner(o.owner),what(o.what),generation(o.generation),token(o.token),value(o.value),index(o.index),kind(o.kind){std::memcpy(heaps,o.heaps,sizeof(heaps));std::memcpy(starts,o.starts,sizeof(starts));std::memcpy(counts,o.counts,sizeof(counts));std::memcpy(increments,o.increments,sizeof(increments));o.owner=nullptr;}
++  ~operation(){if(owner)owner->finish(*this,false);}bool started()const{return owner!=nullptr;}
++ };
++ void enable(uint32_t list_type,uint64_t gen,bool initially_recording=true){std::lock_guard<std::mutex>l(gate);type=list_type;enabled=list_type==0&&gen;recording=enabled&&initially_recording;generation=gen;advance();unknown();}
++ operation begin(action what,uint64_t value=0,uint32_t index=0,uint32_t kind=0){
++  std::lock_guard<std::mutex>l(gate);operation tx;if(!enabled||destroyed||!recording)return tx;
++  if(what==parameter_write&&(index>=64||kind>rs_root_parameter_uav)){poisoned=true;unknown();advance();return tx;}
++  if(active){poisoned=true;unknown();}if(!advance())return tx;
++  tx.owner=this;tx.what=what;tx.generation=generation;tx.token=epoch;tx.value=value;tx.index=index;tx.kind=kind;++active;return tx;
++ }
++ operation begin_reset(uint64_t gen){std::lock_guard<std::mutex>l(gate);operation tx;if(!enabled||destroyed)return tx;bool overlap=active!=0;recording=false;unknown();poisoned=overlap||!gen;generation=gen;if(!advance())return tx;tx.owner=this;tx.what=reset;tx.generation=gen;tx.token=epoch;++active;return tx;}
++ operation begin_heaps(const uint64_t (&identities)[2],const uint64_t (&gpu_starts)[2],const uint32_t (&descriptor_counts)[2],const uint32_t (&descriptor_increments)[2],bool valid=true){
++  auto tx=begin(heaps_write);if(!tx.started())return tx;
++  if(!valid){std::lock_guard<std::mutex>l(gate);poisoned=true;unknown();return tx;}
++  std::memcpy(tx.heaps,identities,sizeof(tx.heaps));std::memcpy(tx.starts,gpu_starts,sizeof(tx.starts));std::memcpy(tx.counts,descriptor_counts,sizeof(tx.counts));std::memcpy(tx.increments,descriptor_increments,sizeof(tx.increments));return tx;
++ }
++ bool finish(operation &tx,bool returned=true){
++  std::lock_guard<std::mutex>l(gate);if(tx.owner!=this)return false;
++  const bool same=tx.generation==generation;const bool commit=returned&&same&&!destroyed&&!poisoned&&active==1&&tx.token==epoch;
++  if(same){
++   if(tx.what==reset){recording=commit;unknown();}
++   else if(!commit){unknown();if(active>1)poisoned=true;}
++   else switch(tx.what){
++    case signature_write:
++     if(!signature_known||signature!=tx.value){known=0;std::memset(parameters,0,sizeof(parameters));signature_epoch=tx.token;}
++     signature=tx.value;signature_known=true;break;
++    case heaps_write:{
++     bool changed=heaps_known!=3||std::memcmp(heaps,tx.heaps,sizeof(heaps))||std::memcmp(starts,tx.starts,sizeof(starts))||std::memcmp(counts,tx.counts,sizeof(counts))||std::memcmp(increments,tx.increments,sizeof(increments));
++     if(changed){clear_tables();heap_epoch=tx.token;}
++     std::memcpy(heaps,tx.heaps,sizeof(heaps));std::memcpy(starts,tx.starts,sizeof(starts));std::memcpy(counts,tx.counts,sizeof(counts));std::memcpy(increments,tx.increments,sizeof(increments));heaps_known=3;break;
++    }
++    case parameter_write:
++     parameters[tx.index]={};known&=~(uint64_t(1)<<tx.index);
++     if(tx.kind){parameters[tx.index]={tx.value,tx.kind,0};known|=uint64_t(1)<<tx.index;}break;
++    case make_unknown:unknown();break;
++    default:break;
++   }
++  }
++  advance();if(active)--active;tx.owner=nullptr;return commit;
++ }
++ void close(){std::lock_guard<std::mutex>l(gate);recording=false;unknown();advance();}
++ void destroy(){std::lock_guard<std::mutex>l(gate);destroyed=true;recording=false;unknown();advance();}
++ bool query(uint64_t required,uint32_t required_heaps,rs_graphics_root_snapshot_v1*out)const{
++  if(!out||out->size!=sizeof(*out)||out->version!=1||(required_heaps&~3U))return false;
++  std::lock_guard<std::mutex>l(gate);rs_graphics_root_snapshot_v1 r={};r.size=sizeof(r);r.version=1;r.command_list_type=type;r.recording_generation=generation;r.mutation_epoch=epoch;
++  if(!enabled)r.status=rs_root_unsupported;else if(destroyed)r.status=rs_root_destroyed;else if(active)r.status=rs_root_busy;else if(!recording)r.status=rs_root_closed;else if(poisoned)r.status=rs_root_invalid;
++  else {r.root_signature=signature;r.root_signature_known=signature_known;r.root_signature_epoch=signature_epoch;r.heap_epoch=heap_epoch;r.heap_known_mask=heaps_known;r.parameter_known_mask=known;std::memcpy(r.native_heaps,heaps,sizeof(heaps));std::memcpy(r.heap_gpu_starts,starts,sizeof(starts));std::memcpy(r.heap_descriptor_counts,counts,sizeof(counts));std::memcpy(r.heap_descriptor_increments,increments,sizeof(increments));std::memcpy(r.parameters,parameters,sizeof(parameters));r.status=signature_known&&(known&required)==required&&(heaps_known&required_heaps)==required_heaps?rs_root_complete:rs_root_partial;}
++  *out=r;return true;
++ }
++};
++}
+diff --git a/source/d3d12/graphics_root_snapshot_v1.h b/source/d3d12/graphics_root_snapshot_v1.h
+new file mode 100644
+index 0000000..964eaab
+--- /dev/null
++++ b/source/d3d12/graphics_root_snapshot_v1.h
+@@ -0,0 +1,43 @@
++#pragma once
++#include <stdint.h>
++// Additive C ABI. Native raw identities are borrowed, not COM weak references.
++enum rs_graphics_root_status_v1 : uint32_t {
++ rs_root_untracked=0,rs_root_complete=1,rs_root_partial=2,rs_root_busy=3,
++ rs_root_closed=4,rs_root_unsupported=5,rs_root_invalid=6,rs_root_destroyed=7
++};
++enum rs_graphics_root_parameter_kind_v1 : uint32_t {
++ rs_root_parameter_unknown=0,rs_root_parameter_table=1,rs_root_parameter_cbv=2,
++ rs_root_parameter_srv=3,rs_root_parameter_uav=4
++};
++struct rs_graphics_root_parameter_v1 {uint64_t value;uint32_t kind,reserved;};
++struct rs_graphics_root_snapshot_v1 {
++ uint32_t size,version,status,command_list_type;
++ uint64_t recording_generation,mutation_epoch,root_signature,root_signature_epoch,heap_epoch;
++ uint32_t root_signature_known,heap_known_mask;
++ uint64_t parameter_known_mask;
++ uint64_t native_heaps[2]; // Indexed by native D3D12 heap type: view=0, sampler=1.
++ uint64_t heap_gpu_starts[2];
++ uint32_t heap_descriptor_counts[2],heap_descriptor_increments[2];
++ rs_graphics_root_parameter_v1 parameters[64];
++};
++static_assert(sizeof(rs_graphics_root_parameter_v1)==16,"root parameter ABI");
++static_assert(sizeof(rs_graphics_root_snapshot_v1)==1144,"graphics root snapshot ABI");
++// bool __cdecl ReShadeD3D12QueryGraphicsRootStateV1(void *live_api_command_list,
++//    uint64_t required_parameter_mask,uint32_t required_heap_mask,
++//    rs_graphics_root_snapshot_v1 *out);
++// out.size=1144 and version=1; heap mask bits 0/1 only. false=bad arguments.
++// true=processed, inspect status. Complete requires a known root signature plus
++// the requested parameter/heap bits. Known null root/heap/value is represented
++// as zero and still must be rejected where a live binding is required.
++// Values mean table GPU descriptor handle or root CBV/SRV/UAV GPU VA by kind.
++// Root constants clear the affected parameter observation (unsupported kind).
++// Different root signature clears all params; redundant identical root keeps
++// them. Effective heap changes clear table params; redundant same heap set
++// preserves them regardless of input ordering. Reset/ClearState/Bundle/Indirect
++// conservatively clear observations. Bundles/internal immediate lists refuse.
++// A same-generation query is CPU call-return metadata, never GPU contents.
++// Caller serializes recording and independently checks resource/layout/heap
++// lifetime generations and table identity against current typed native heaps.
++// Heap GPU start/count/increment are observed on native SetDescriptorHeaps;
++// they allow bounded table-slot checks without dereferencing snapshot identities.
++// External get_native writers are outside the observed-call contract.
+diff --git a/source/d3d12/ia_snapshot_v1.h b/source/d3d12/ia_snapshot_v1.h
+new file mode 100644
+index 0000000..743654e
+--- /dev/null
++++ b/source/d3d12/ia_snapshot_v1.h
+@@ -0,0 +1,49 @@
++#pragma once
++#include <stdint.h>
++
++// Optional v4 fork extension, not exported by core v3. No API20 vtable edit.
++// Only CPU metadata from instrumented native/API calls is observed. No resource
++// ownership, native descriptor read, command submission or GPU completion proof.
++enum rs_ia_status_v1 : uint32_t {
++ rs_ia_untracked=0, rs_ia_complete=1, rs_ia_partial=2, rs_ia_busy=3,
++ rs_ia_closed=4, rs_ia_unsupported=5, rs_ia_invalid=6, rs_ia_destroyed=7
++};
++struct rs_vertex_buffer_view_v1 { uint64_t buffer_location; uint32_t size_bytes,stride_bytes; };
++struct rs_index_buffer_view_v1 { uint64_t buffer_location; uint32_t size_bytes,format; };
++struct rs_ia_snapshot_v1 {
++ uint32_t size,version,status,command_list_type;
++ uint64_t recording_generation,mutation_epoch;
++ uint32_t vertex_known_mask,index_known,index_present,reserved;
++ rs_vertex_buffer_view_v1 vertex[32];
++ rs_index_buffer_view_v1 index;
++};
++static_assert(sizeof(rs_vertex_buffer_view_v1)==16,"VBV wire size");
++static_assert(sizeof(rs_index_buffer_view_v1)==16,"IBV wire size");
++static_assert(sizeof(rs_ia_snapshot_v1)==576,"Snapshot wire size");
++struct rs_ia_binding_v1 {
++ uint32_t size,version,first_vertex_slot,vertex_count;
++ uint64_t expected_recording_generation;
++ uint32_t bind_index,index_present;
++ rs_vertex_buffer_view_v1 vertex[32];
++ rs_index_buffer_view_v1 index;
++};
++static_assert(sizeof(rs_ia_binding_v1)==560,"Exact binding wire size");
++// Proposed C export, __cdecl:
++// bool ReShadeD3D12QueryIASnapshotV1(void *api_command_list,
++//   uint32_t required_vertex_mask, uint32_t require_index,
++//   rs_ia_snapshot_v1 *out_snapshot);
++// Caller initializes size/version, passes a live D3D12 API command-list pointer,
++// and serializes recording on this list. require_index is 0 or 1.
++// false: bad arguments/size/version/API. true: processed; inspect status/masks.
++// Complete means all requested observed views are known, not all 32 necessarily.
++// Missing views are zero-filled and never guessed from resource Width-offset.
++// Index-known + !index-present means an explicitly observed null IB binding.
++// Snapshot generations/epochs must match the current recording. Native writes
++// bypassing the instrumented proxy/API path are outside this observed-state ABI.
++// Optional mutation export (unlike the metadata-only query):
++// bool ReShadeD3D12BindIAViewsV1(void *api_command_list,
++//   const rs_ia_binding_v1 *binding);
++// Requires exact nonzero recording generation and a supported, nonbusy list.
++// Calls native IASetVB/IB with exact values, updates this tracker, emits no addon
++// bind events. Caller owns all resources and serializes recording. Zero-count
++// with bind_index=0 is inert. index_present=0 binds a null native index view.
+diff --git a/source/d3d12/ia_state_model.hpp b/source/d3d12/ia_state_model.hpp
+new file mode 100644
+index 0000000..936974f
+--- /dev/null
++++ b/source/d3d12/ia_state_model.hpp
+@@ -0,0 +1,69 @@
++#pragma once
++#include "ia_snapshot_v1.h"
++#include <mutex>
++#include <cstring>
++
++namespace reshade::d3d12 {
++// Fixed storage only. Native operations/callbacks occur between begin and finish,
++// never under this mutex. The mutex does not legalize concurrent D3D12 recording.
++class ia_state_store {
++ mutable std::mutex mutex;
++ bool enabled=false,recording=false,poisoned=false,destroyed=false;
++ uint32_t type=0,known=0,active=0;bool ib_known=false,ib_present=false;
++ uint64_t generation=0,epoch=0;
++ rs_vertex_buffer_view_v1 vb[32]={};rs_index_buffer_view_v1 ib={};
++ void unknown(){known=0;ib_known=ib_present=false;std::memset(vb,0,sizeof(vb));ib={};}
++ bool advance(){if(epoch==UINT64_MAX){poisoned=true;unknown();return false;}++epoch;return true;}
++ static uint32_t mask(uint32_t first,uint32_t count){return !count?0:count==32?UINT32_MAX:((uint32_t(1)<<count)-1)<<first;}
++public:
++ struct operation {
++  ia_state_store *owner=nullptr;uint64_t generation=0,token=0;
++  uint32_t first=0,count=0;bool bind_ib=false,present=false,reset=false,unknown_only=false;
++  rs_vertex_buffer_view_v1 values[32]={};rs_index_buffer_view_v1 index={};
++  operation()=default;operation(const operation&)=delete;operation&operator=(const operation&)=delete;
++  operation(operation&&o) noexcept:owner(o.owner),generation(o.generation),token(o.token),first(o.first),count(o.count),bind_ib(o.bind_ib),present(o.present),reset(o.reset),unknown_only(o.unknown_only),index(o.index){std::memcpy(values,o.values,sizeof(values));o.owner=nullptr;}
++  ~operation(){if(owner)owner->finish(*this,false);}
++  bool started()const{return owner!=nullptr;}
++ };
++ void enable(uint32_t list_type,uint64_t gen){std::lock_guard<std::mutex>l(mutex);type=list_type;enabled=list_type==0&&gen!=0;recording=enabled;generation=gen;advance();unknown();}
++ operation begin(uint32_t first,uint32_t count,const rs_vertex_buffer_view_v1 *views,bool bind_ib,bool present,const rs_index_buffer_view_v1 *index,uint64_t expected=0,bool strict=false){
++  std::lock_guard<std::mutex>l(mutex);operation tx;
++  if(!enabled||!recording||destroyed)return tx;
++  if(first>32||count>32-first||(present&&bind_ib&&!index)){poisoned=true;unknown();advance();return tx;}
++  if(strict&&(!expected||expected!=generation||active||poisoned))return tx;
++  if(!count&&!bind_ib)return tx;
++  if(active){poisoned=true;unknown();}if(!advance())return tx;
++  tx.owner=this;tx.generation=generation;tx.token=epoch;tx.first=first;tx.count=count;tx.bind_ib=bind_ib;tx.present=present;
++  if(views)std::memcpy(tx.values,views,count*sizeof(*views));if(bind_ib&&present)tx.index=*index;
++  known&=~mask(first,count);for(uint32_t i=0;i<count;i++)vb[first+i]={};if(bind_ib){ib_known=ib_present=false;ib={};}++active;return tx;
++ }
++ operation begin_reset(uint64_t gen){
++  std::lock_guard<std::mutex>l(mutex);operation tx;if(!enabled||destroyed)return tx;
++  bool overlap=active!=0;unknown();recording=false;poisoned=overlap||!gen;generation=gen;if(!advance())return tx;
++  tx.owner=this;tx.generation=gen;tx.token=epoch;tx.reset=true;++active;return tx;
++ }
++ operation begin_unknown(){std::lock_guard<std::mutex>l(mutex);operation tx;if(!enabled||!recording||destroyed)return tx;unknown();if(active)poisoned=true;if(!advance())return tx;tx.owner=this;tx.generation=generation;tx.token=epoch;tx.unknown_only=true;++active;return tx;}
++ bool finish(operation &tx,bool native_returned=true){
++  std::lock_guard<std::mutex>l(mutex);if(tx.owner!=this)return false;
++  const bool same=tx.generation==generation;bool commit=native_returned&&same&&!destroyed&&!poisoned&&active==1&&tx.token==epoch;
++  if(same){
++   if(tx.reset){recording=commit;unknown();}
++   else if(tx.unknown_only)unknown();
++   else if(commit&&recording){for(uint32_t i=0;i<tx.count;i++)vb[tx.first+i]=tx.values[i];known|=mask(tx.first,tx.count);if(tx.bind_ib){ib_known=true;ib_present=tx.present;ib=tx.index;}}
++   else{unknown();if(active>1)poisoned=true;}
++  }
++  advance();if(active)--active;tx.owner=nullptr;return commit;
++ }
++ void invalidate(){std::lock_guard<std::mutex>l(mutex);unknown();advance();}
++ void close(){std::lock_guard<std::mutex>l(mutex);recording=false;unknown();advance();}
++ void destroy(){std::lock_guard<std::mutex>l(mutex);destroyed=true;recording=false;unknown();advance();}
++ bool generation_matches(uint64_t gen)const{std::lock_guard<std::mutex>l(mutex);return enabled&&recording&&!destroyed&&!active&&!poisoned&&gen&&generation==gen;}
++ bool query(uint32_t required,uint32_t require_ib,rs_ia_snapshot_v1*out)const{
++  if(!out||out->size!=sizeof(*out)||out->version!=1||require_ib>1)return false;std::lock_guard<std::mutex>l(mutex);
++  rs_ia_snapshot_v1 r={};r.size=sizeof(r);r.version=1;r.command_list_type=type;r.recording_generation=generation;r.mutation_epoch=epoch;
++  if(!enabled)r.status=rs_ia_unsupported;else if(destroyed)r.status=rs_ia_destroyed;else if(active)r.status=rs_ia_busy;else if(!recording)r.status=rs_ia_closed;else if(poisoned)r.status=rs_ia_invalid;
++  else{r.vertex_known_mask=known;r.index_known=ib_known;r.index_present=ib_present;std::memcpy(r.vertex,vb,sizeof(vb));r.index=ib;r.status=(known&required)==required&&(!require_ib||ib_known)?rs_ia_complete:rs_ia_partial;}
++  *out=r;return true;
++ }
++};
++}
+diff --git a/source/d3d12/bc7_upload_v1.h b/source/d3d12/bc7_upload_v1.h
+new file mode 100644
+index 0000000..61a0d8e
+--- /dev/null
++++ b/source/d3d12/bc7_upload_v1.h
+@@ -0,0 +1,35 @@
++#pragma once
++#include <stdint.h>
++
++// Optional exports scoped to the current copy_buffer_to_texture callback.
++// An eligible view is borrowed. The add-on must compare the source bytes and
++// retain the replacement upload resource while recorded GPU work can use it.
++enum rs_bc7_upload_status_v1 : uint32_t {
++    rs_bc7_upload_not_current = 0,
++    rs_bc7_upload_eligible = 1,
++    rs_bc7_upload_wrong_shape = 2,
++    rs_bc7_upload_partial = 3,
++    rs_bc7_upload_wrong_footprint = 4,
++    rs_bc7_upload_wrong_heap = 5,
++    rs_bc7_upload_bounds = 6,
++    rs_bc7_upload_unsupported_list = 7,
++};
++struct rs_bc7_upload_view_v1 {
++    uint32_t size, version, status, subresource;
++    uint32_t texture_width, texture_height, mip_count, texture_format;
++    uint32_t footprint_width, footprint_height, footprint_format, row_pitch;
++    uint32_t row_bytes, block_rows, reserved[2];
++    uint64_t token, source_resource, destination_resource, source_offset, source_span;
++};
++static_assert(sizeof(rs_bc7_upload_view_v1) == 104);
++struct rs_bc7_upload_replacement_v1 {
++    uint32_t size, version;
++    uint64_t token, upload_resource, upload_offset;
++};
++static_assert(sizeof(rs_bc7_upload_replacement_v1) == 32);
++// bool ReShadeD3D12QueryCanonicalBC7UploadV1(void *api_command_list,
++//     rs_bc7_upload_view_v1 *out);
++// bool ReShadeD3D12ReplaceCanonicalBC7UploadV1(void *api_command_list,
++//     const rs_bc7_upload_replacement_v1 *replacement);
++// Replace schedules the source for this call; the callback must return false
++// to let the native copy execute. It does not write source/target bytes.
+diff --git a/source/d3d12/d3d12_bc7_upload.inl b/source/d3d12/d3d12_bc7_upload.inl
+new file mode 100644
+index 0000000..853573d
+--- /dev/null
++++ b/source/d3d12/d3d12_bc7_upload.inl
+@@ -0,0 +1,148 @@
++#include "bc7_upload_v1.h"
++#include <atomic>
++
++namespace reshade::d3d12::bc7_upload {
++
++bool IsBC7(DXGI_FORMAT f) {
++    return f == DXGI_FORMAT_BC7_TYPELESS || f == DXGI_FORMAT_BC7_UNORM || f == DXGI_FORMAT_BC7_UNORM_SRGB;
++}
++
++bool IsNativeUploadBuffer(ID3D12Resource *resource, uint64_t offset, uint64_t length) {
++    const auto desc = resource->GetDesc();
++    if (desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || desc.Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR ||
++        offset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT || !length || offset > desc.Width || length > desc.Width - offset)
++        return false;
++    D3D12_HEAP_PROPERTIES heap = {};
++    return SUCCEEDED(resource->GetHeapProperties(&heap, nullptr)) && heap.Type == D3D12_HEAP_TYPE_UPLOAD;
++}
++
++struct Context {
++    reshade::api::command_list *api;
++    ID3D12Device *device;
++    ID3D12Device *device_proxy;
++    ID3D12GraphicsCommandList *native;
++    const D3D12_TEXTURE_COPY_LOCATION &dst;
++    const D3D12_TEXTURE_COPY_LOCATION &src;
++    const D3D12_BOX *src_box;
++    UINT x, y, z;
++    rs_bc7_upload_view_v1 view = {sizeof(view), 1};
++    bool checked = false;
++    ID3D12Resource *replacement = nullptr;
++    UINT64 replacement_offset = 0;
++};
++thread_local Context *current = nullptr;
++
++struct Scope {
++    Context &state;
++    Context *previous;
++    explicit Scope(Context &c) : state(c), previous(current) { current = &state; }
++    ~Scope() { current = previous; }
++};
++
++uint64_t NextToken() {
++    static std::atomic<uint64_t> sequence{1};
++    auto value = sequence.load(std::memory_order_relaxed);
++    while (value != UINT64_MAX)
++        if (sequence.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
++    return 0;
++}
++
++void Certify(Context &c) {
++    c.checked = true;
++    auto &v = c.view;
++    const auto type = c.native->GetType();
++    if (type != D3D12_COMMAND_LIST_TYPE_DIRECT && type != D3D12_COMMAND_LIST_TYPE_COPY) {
++        v.status = rs_bc7_upload_unsupported_list;
++        return;
++    }
++    const auto tex = c.dst.pResource->GetDesc();
++    const auto src_desc = c.src.pResource->GetDesc();
++    const UINT mip = c.dst.SubresourceIndex;
++    v.subresource = mip;
++    if (tex.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D || tex.Width != 2048 || tex.Height != 2048 ||
++        tex.DepthOrArraySize != 1 || tex.MipLevels != 12 || tex.SampleDesc.Count != 1 || tex.SampleDesc.Quality != 0 ||
++        tex.Layout != D3D12_TEXTURE_LAYOUT_UNKNOWN || !IsBC7(tex.Format) || mip >= tex.MipLevels ||
++        src_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || c.src.pResource == c.dst.pResource) {
++        v.status = rs_bc7_upload_wrong_shape;
++        return;
++    }
++    const UINT width = static_cast<UINT>(tex.Width) >> mip;
++    const UINT height = tex.Height >> mip;
++    const auto &placed = c.src.PlacedFootprint;
++    const auto &fp = placed.Footprint;
++    if (c.x || c.y || c.z || (c.src_box &&
++        (c.src_box->left || c.src_box->top || c.src_box->front || c.src_box->back != 1 ||
++         c.src_box->right != width || c.src_box->bottom != height))) {
++        v.status = rs_bc7_upload_partial;
++        return;
++    }
++    D3D12_PLACED_SUBRESOURCE_FOOTPRINT canonical = {};
++    UINT rows = 0;
++    UINT64 row_bytes = 0, bytes = 0;
++    c.device->GetCopyableFootprints(&tex, mip, 1, 0, &canonical, &rows, &row_bytes, &bytes);
++    if (!IsBC7(fp.Format) || fp.Width != canonical.Footprint.Width || fp.Height != canonical.Footprint.Height ||
++        fp.Depth != 1 || fp.RowPitch != canonical.Footprint.RowPitch || !rows || !row_bytes ||
++        row_bytes != ((width + 3) / 4) * 16u || rows != ((height + 3) / 4) ||
++        bytes != static_cast<UINT64>(rows - 1) * fp.RowPitch + row_bytes ||
++        placed.Offset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) {
++        v.status = rs_bc7_upload_wrong_footprint;
++        return;
++    }
++    if (placed.Offset > src_desc.Width || bytes > src_desc.Width - placed.Offset) {
++        v.status = rs_bc7_upload_bounds;
++        return;
++    }
++    if (!IsNativeUploadBuffer(c.src.pResource, placed.Offset, bytes)) {
++        v.status = rs_bc7_upload_wrong_heap;
++        return;
++    }
++    v.token = NextToken();
++    if (!v.token) return;
++    v.status = rs_bc7_upload_eligible;
++    v.texture_width = static_cast<UINT>(tex.Width);
++    v.texture_height = tex.Height;
++    v.mip_count = tex.MipLevels;
++    v.texture_format = tex.Format;
++    v.footprint_width = fp.Width;
++    v.footprint_height = fp.Height;
++    v.footprint_format = fp.Format;
++    v.row_pitch = fp.RowPitch;
++    v.row_bytes = static_cast<UINT>(row_bytes);
++    v.block_rows = rows;
++    v.source_resource = reinterpret_cast<uint64_t>(c.src.pResource);
++    v.destination_resource = reinterpret_cast<uint64_t>(c.dst.pResource);
++    v.source_offset = placed.Offset;
++    v.source_span = bytes;
++}
++
++} // namespace reshade::d3d12::bc7_upload
++
++extern "C" __declspec(dllexport) bool ReShadeD3D12QueryCanonicalBC7UploadV1(void *api_command_list, rs_bc7_upload_view_v1 *out) {
++    using namespace reshade::d3d12::bc7_upload;
++    if (!api_command_list || !out || out->size != sizeof(*out) || out->version != 1) return false;
++    *out = {sizeof(*out), 1};
++    if (!current || current->api != api_command_list) return true;
++    if (!current->checked) Certify(*current);
++    *out = current->view;
++    return true;
++}
++
++extern "C" __declspec(dllexport) bool ReShadeD3D12ReplaceCanonicalBC7UploadV1(void *api_command_list,
++    const rs_bc7_upload_replacement_v1 *replacement) {
++    using namespace reshade::d3d12::bc7_upload;
++    auto *c = current;
++    if (!api_command_list || !replacement || replacement->size != sizeof(*replacement) || replacement->version != 1 ||
++        !c || c->api != api_command_list || !c->checked || c->view.status != rs_bc7_upload_eligible || c->replacement ||
++        replacement->token != c->view.token || !replacement->upload_resource) return false;
++    auto *res = reinterpret_cast<ID3D12Resource *>(replacement->upload_resource);
++    if (res == c->src.pResource || res == c->dst.pResource || !IsNativeUploadBuffer(res, replacement->upload_offset, c->view.source_span))
++        return false;
++    ID3D12Device *owner = nullptr;
++    if (FAILED(res->GetDevice(IID_PPV_ARGS(&owner))) || !owner) return false;
++    const bool same = owner == c->device || owner == c->device_proxy;
++    owner->Release();
++    if (!same) return false;
++    c->replacement = res;
++    c->replacement_offset = replacement->upload_offset;
++    return true;
++}

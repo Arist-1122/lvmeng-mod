@@ -1,0 +1,13 @@
+# User-local state and build outputs
+**/game-location.json
+**/user-data/
+**/control/
+**/logs/
+**/__pycache__/
+**/*.pyc
+**/build/
+**/*.obj
+**/*.lib
+**/*.exp
+**/*.pdb
+.local/

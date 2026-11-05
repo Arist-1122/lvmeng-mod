@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "gameUsed": false,
+  "softwareWARPFootprints": true,
+  "productionHelperExecuted": true,
+  "textures": 6,
+  "mips": 72,
+  "positiveRowLayouts": 216,
+  "paddingIgnoredCases": 108,
+  "quickByteRejects": 216,
+  "unsampledByteShaRejects": 162,
+  "crossPartComparisons": 360,
+  "sharedCoarseHashAliases": 0,
+  "mip0AverageHashMicroseconds": 1704,
+  "assertions": 2185,
+  "matcherSha256": "b90e3306401f7f1e18dcb03c3a7e1a2750cc9d271a9e4721c251e12feea1b7b3"
+}

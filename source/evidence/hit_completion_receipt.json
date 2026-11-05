@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "gameUsed": false,
+  "metadata": "hit_completion_shader.json",
+  "metadataSha256": "67e0d0f65eda6bf4f229fcbf1af5702e5a5cdbc6c073d49bc81857bf984be550",
+  "validation": "hit_completion_validation.json",
+  "validationSha256": "62a4b5efdb0b641e368eb3da362b8f91c177f52bd95ef7efd7414c00d6c4e29a",
+  "programs": [
+    {
+      "psCrc": "9C58D529",
+      "vsCrc": "F00BA68E",
+      "preview": true,
+      "candidate": "Preview_HitCompletion_9C58D529.dxbc",
+      "candidateSha": "4ba43606d3d01517c7779b8ce1c79a607ac08c61f6599494d5e8c91643c4fdb1",
+      "candidateBytes": 194840,
+      "groups": 21
+    },
+    {
+      "psCrc": "12BCE52E",
+      "vsCrc": "F00BA68E",
+      "preview": true,
+      "candidate": "Preview_HitCompletion_12BCE52E.dxbc",
+      "candidateSha": "12759352dc2cf7b0c1a97094685733eda417268445f237b522ffbb635698cf1d",
+      "candidateBytes": 168612,
+      "groups": 11
+    }
+  ]
+}

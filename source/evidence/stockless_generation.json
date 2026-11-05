@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "gameUsed": false,
+  "baselineMatcherSha256": "c932c9631f18a39aef56da1fe43db6f00d1daa34a144a5e272e52dbb49ff636a",
+  "matcherSha256": "b90e3306401f7f1e18dcb03c3a7e1a2750cc9d271a9e4721c251e12feea1b7b3",
+  "stockFilesRequired": false,
+  "originalStockFilesCopied": false,
+  "sparseFingerprintBytes": 9216,
+  "fullMipSha256Required": true,
+  "authoredOnlyInitialization": true,
+  "unknownAnchorAvoidsDuplicateFullSha": true,
+  "ownerZeroThroughFiveMip0Preserved": true,
+  "textures": [
+    {
+      "id": "hair01",
+      "stockSha256": "234ce4d8731e3b512db7b040df45c8e5a688df79b350162bb3b5d30cf6a2d01f",
+      "authoredSha256": "56ba19725346d2d8e52f0ad056d0e80757c5d703e058445ec475c9fe2253948e",
+      "mips": 12,
+      "sparseIdentityBytes": 1536
+    },
+    {
+      "id": "hair02",
+      "stockSha256": "6ed1d1e2ea73796d3e7f7f8c2262ba4a1e4927e4e675bdadb87a2d30366b0624",
+      "authoredSha256": "fefca1fc7dc70cef8a0fc22664e8e108b81cf7886bd260ac4dee0f871895e16e",
+      "mips": 12,
+      "sparseIdentityBytes": 1536
+    },
+    {
+      "id": "face",
+      "stockSha256": "65b16342042d14dcaa8e22468bfc1adb4813971ab16d3cd775f1811775163f18",
+      "authoredSha256": "85f353fcd084e0cea9e1222162a405705c1c592234e23b629e97bc8d98c842b1",
+      "mips": 12,
+      "sparseIdentityBytes": 1536
+    },
+    {
+      "id": "body01",
+      "stockSha256": "543f1ff58b72e5f46bb2ca32d3257c56921bd272c6862eb0e219df77646b4081",
+      "authoredSha256": "88d4343413b5edde4ecab10188eddfd456b07aff3595daa4d6ecaffa944fe6ad",
+      "mips": 12,
+      "sparseIdentityBytes": 1536
+    },
+    {
+      "id": "body02",
+      "stockSha256": "beb1a1f86210a53af7d75753823d58ff0af24dba0e9bceed3959a4eff4741434",
+      "authoredSha256": "6d79596c2b93f62120d23c1256d2f6b0e9878e0cfca7ee03cfdf7288706fc844",
+      "mips": 12,
+      "sparseIdentityBytes": 1536
+    },
+    {
+      "id": "weapon",
+      "stockSha256": "40e46fed57ea9d548b46c82de1e45b029e6d4b0b68e5faff4b0a9496439de550",
+      "authoredSha256": "4158b4eb7d56fe3b6137c9dd3ce2ce859245ab72104fe329cca06563d247d601",
+      "mips": 12,
+      "sparseIdentityBytes": 1536
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "passed": true,
+  "gameLaunched": false,
+  "loaderInvoked": false,
+  "coreLoaded": false,
+  "addonInitCalled": false,
+  "fixedFiles": 77,
+  "tests": [
+    {
+      "name": "All 77 final runtime files equal manager-hosted Mod and immutable manifest",
+      "passed": true
+    },
+    {
+      "name": "Current native tables and embedded actor contract identify every shipped candidate",
+      "passed": true
+    },
+    {
+      "name": "Actual final compiled manager validates its complete real 77-file Mod",
+      "passed": true
+    },
+    {
+      "name": "Compiled verify mode accepts a valid isolated manifest without executing its data",
+      "passed": true
+    },
+    {
+      "name": "Runtime directory traversal rejected before package access",
+      "passed": true
+    },
+    {
+      "name": "Absolute runtime directory rejected",
+      "passed": true
+    },
+    {
+      "name": "Drive-relative runtime directory rejected",
+      "passed": true
+    },
+    {
+      "name": "Package manifest traversal rejected",
+      "passed": true
+    },
+    {
+      "name": "Unlisted executable rejected",
+      "passed": true
+    },
+    {
+      "name": "Case-insensitive duplicate fixed-file path rejected",
+      "passed": true
+    },
+    {
+      "name": "Changed listed payload rejected",
+      "passed": true
+    },
+    {
+      "name": "Malformed payload SHA rejected",
+      "passed": true
+    }
+  ],
+  "managerSha256": "1b79e5654ed85b4a4d7b5b70969c58b93ea93452cbfd7192c584c40878347357",
+  "addonSha256": "f058e708ac1159e8a0c2319f4bd154a2a3e1eae5a495a4adde4f26474ad17632",
+  "packageSha256": "e55cc72d4d36e560c545aa81954500e4fe94029b8fa0705f89602419acde7d1a",
+  "managerSourceSha256": "b201fc5cddb0bba4cc9d3948351f380798ff98bd83474e96ca55ccb5b6c562be",
+  "reviewedSourceSha256": {
+    "PortableRuntime.hpp": "4057beb398d1294e176804c198e13fc6d4dbadf88b5bd7981da4eaa06b9fe527",
+    "SurfaceLightRuntime.inl": "9862dec5181f4af717fcffb6bee9eeda6c4c96fff84973a81aef0081d2b40432",
+    "ComboHair.inl": "2ba7a748c72f95b0324e05feac23c05b35f0a78bfe6416162312c7baa94b1a44",
+    "OutfitActor.cpp": "cf3462340cc1493b63f25e6f99f17b2185f297f0db6409dc17fdd88dacecf4b2",
+    "HeadUploadMatcher.hpp": "b90e3306401f7f1e18dcb03c3a7e1a2750cc9d271a9e4721c251e12feea1b7b3",
+    "GroundPrograms.generated.hpp": "c1c82518045721dbf296cb319aeebdd8812f430429cdcee3fe5de01b48fa8796"
+  },
+  "knownLimits": [
+    "Shared hit/break texture fallback remains explicit foreground single-character behavior, not exclusive character ownership.",
+    "No current game visual acceptance or GPU timing is established by this artifact review."
+  ]
+}

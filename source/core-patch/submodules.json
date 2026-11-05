@@ -1,0 +1,57 @@
+[
+  {
+    "path": "deps/imgui",
+    "url": "https://github.com/ocornut/imgui.git",
+    "commit": "3912b3d9a9c1b3f17431aebafd86d2f40ee6e59c"
+  },
+  {
+    "path": "deps/minhook",
+    "url": "https://github.com/TsudaKageyu/minhook.git",
+    "commit": "8fda4f5481fed5797dc2651cd91e238e9b3928c6"
+  },
+  {
+    "path": "deps/stb",
+    "url": "https://github.com/nothings/stb.git",
+    "commit": "28d546d5eb77d4585506a20480f4de2e706dff4c"
+  },
+  {
+    "path": "deps/glad",
+    "url": "https://github.com/Dav1dde/glad",
+    "commit": "27bed1181560211b55e39a9b132fef8c5846aae5"
+  },
+  {
+    "path": "deps/utfcpp",
+    "url": "https://github.com/nemtrif/utfcpp.git",
+    "commit": "819011bb01628fe1aa2f1da9f2c842a48fd5680b"
+  },
+  {
+    "path": "deps/spirv",
+    "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+    "commit": "7845730cab6ebbdeb621e7349b7dc1a59c3377be"
+  },
+  {
+    "path": "deps/vma",
+    "url": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator",
+    "commit": "1076b348abd17859a116f4b111c43d58a588a086"
+  },
+  {
+    "path": "deps/fpng",
+    "url": "https://github.com/richgel999/fpng",
+    "commit": "925796543b9d26b8edfcdcecd94c1dac280f29fc"
+  },
+  {
+    "path": "deps/d3d12",
+    "url": "https://github.com/microsoft/DirectX-Headers.git",
+    "commit": "9e393d6d8a3b30dcc6f2806ef604ec16a27b0d7e"
+  },
+  {
+    "path": "deps/openxr",
+    "url": "https://github.com/KhronosGroup/OpenXR-SDK.git",
+    "commit": "288d3a7ebc1ad959f62d51da75baa3d27438c499"
+  },
+  {
+    "path": "deps/jxl_simple_lossless",
+    "url": "https://github.com/kampidh/simple-lossless-encoder.git",
+    "commit": "8dc970fc771e35239db55dfbce8f46f83f8e9b73"
+  }
+]

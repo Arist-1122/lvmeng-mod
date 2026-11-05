@@ -1,0 +1,93 @@
+{
+  "images": [
+    {
+      "file": "model-front-v20261104.png",
+      "sha256": "609c839f4283884f7ccd3b4f70d80656feee2fc8deacd32b4bef3d995357f387",
+      "width": 540,
+      "height": 760,
+      "kind": "offline-preview",
+      "sourceStage": "20261104-role26-red-white-black",
+      "sourceArtifact": "renders/candidate_front.png",
+      "caption": "2026-11-04 红白黑服装、银发红瞳设计正面；离线模型预览，早于11月6日Light补充。",
+      "pngMetadataKeys": [],
+      "visualReviewCompleted": true,
+      "personalInfoObserved": false,
+      "rawGameAsset": false
+    },
+    {
+      "file": "model-oblique-v20261104.png",
+      "sha256": "2362437db7416cb1682e91fd82b369be493f3277b626b53f9dd4ea52b9ce15cc",
+      "width": 540,
+      "height": 760,
+      "kind": "offline-preview",
+      "sourceStage": "20261104-role26-red-white-black",
+      "sourceArtifact": "renders/candidate_oblique.png",
+      "caption": "2026-11-04 红白黑服装设计斜侧；离线模型预览。",
+      "pngMetadataKeys": [],
+      "visualReviewCompleted": true,
+      "personalInfoObserved": false,
+      "rawGameAsset": false
+    },
+    {
+      "file": "drone-comparison-v20261105.png",
+      "sha256": "aed78a3ee3e18199a96dd273ec6215112eadaa7f00785e481f1511936960c1f8",
+      "width": 1248,
+      "height": 1068,
+      "kind": "offline-preview",
+      "sourceStage": "20261104-role26-final",
+      "sourceArtifact": "drone/无人机黑红对照.png",
+      "caption": "2026-11-05终验阶段无人机底色对照；离线静态渲染，不代表实机发光。",
+      "pngMetadataKeys": [],
+      "visualReviewCompleted": true,
+      "personalInfoObserved": false,
+      "rawGameAsset": false
+    },
+    {
+      "file": "hit-floor-warp-v20261105.png",
+      "sha256": "d56712b8fa3ac89c15bf763e6a580283a0e544246f4430fc8c70b5ef21a3eb3c",
+      "width": 770,
+      "height": 1130,
+      "kind": "offline-preview",
+      "sourceStage": "20261105-final-polish",
+      "sourceArtifact": "hit_ground/离线命中落地对照.png",
+      "caption": "2026-11-05收尾阶段命中与落地；原生程序WARP回放，非实机帧。",
+      "pngMetadataKeys": [],
+      "visualReviewCompleted": true,
+      "personalInfoObserved": false,
+      "rawGameAsset": false
+    },
+    {
+      "file": "ghost-warp-v20261105.png",
+      "sha256": "4632d9516d42255af98fa235b380d20f78d8ad935d06bfb0526eedfd6aff9c73",
+      "width": 784,
+      "height": 408,
+      "kind": "offline-preview",
+      "sourceStage": "20261105-final-polish",
+      "sourceArtifact": "dodge_afterimage/ghost_source_mesh_WARP.png",
+      "caption": "2026-11-05收尾阶段人形残影；原模型几何的离线WARP回放。",
+      "pngMetadataKeys": [],
+      "visualReviewCompleted": true,
+      "personalInfoObserved": false,
+      "rawGameAsset": false
+    },
+    {
+      "file": "manager-preview-v20261106.png",
+      "sha256": "ba71c1722ba55da5bcb60af3cf0d8cafe6a870581ea4615fd46b7a337c6431e4",
+      "width": 1026,
+      "height": 719,
+      "kind": "offline-preview",
+      "sourceStage": "20261106-integrated-release",
+      "sourceArtifact": "validation/manager-default-enabled.png",
+      "caption": "2026-11-06 整合管理器默认启用内置莉特莉丝Mod；游戏位置待用户选择，状态为待实机验收，离屏界面预览。",
+      "pngMetadataKeys": [
+        "dpi",
+        "gamma",
+        "srgb"
+      ],
+      "visualReviewCompleted": true,
+      "personalInfoObserved": false,
+      "rawGameAsset": false
+    }
+  ],
+  "notes": "All images are offline previews. No live gameplay screenshots or raw game assets are included."
+}

@@ -1,0 +1,784 @@
+{
+  "passed": true,
+  "gameUsed": false,
+  "softwareWARP": true,
+  "programs": [
+    {
+      "psCrc": "9C58D529",
+      "vsCrc": "F00BA68E",
+      "candidateSha": "4ba43606d3d01517c7779b8ce1c79a607ac08c61f6599494d5e8c91643c4fdb1",
+      "candidateBytes": 194840,
+      "nativeD3D12": {
+        "originalPsos": 2,
+        "candidatePsos": 2,
+        "negativeRoots": 8
+      },
+      "groups": [
+        {
+          "name": "Role_26_02@AttackHit2_UD_Flash",
+          "pathId": "-4731608875380209200",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 13400,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 10020,
+              "protectedPixelsExact": 6680,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UD_Plane",
+          "pathId": "4615643055334521977",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 53120,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 28584,
+              "protectedPixelsExact": 19056,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UD_Spot_2",
+          "pathId": "8140174800456718807",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 27200,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 17604,
+              "protectedPixelsExact": 11736,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UD_Spreak_2",
+          "pathId": "-3527707122534542817",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 52860,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 33588,
+              "protectedPixelsExact": 22392,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_01@AttackHit2_UD_Spreak",
+          "pathId": "6598984788125285925",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 64240,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 28120,
+              "protectedPixelsExact": 28120,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UDX_Flash",
+          "pathId": "5159554349765033392",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 13400,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 10020,
+              "protectedPixelsExact": 6680,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UDX_Spot_2",
+          "pathId": "4539601630343236132",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 27200,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 17604,
+              "protectedPixelsExact": 11736,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UDX_Spreak_2",
+          "pathId": "6715974051569301080",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 52860,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 33588,
+              "protectedPixelsExact": 22392,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UD_Wave",
+          "pathId": "3012534684002310707",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 7180,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 4020,
+              "protectedPixelsExact": 2680,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UD_Spreak_2",
+          "pathId": "-6853714123980802968",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 52860,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 33588,
+              "protectedPixelsExact": 22392,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UDX_Wave",
+          "pathId": "1051234457155784741",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 7180,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 4020,
+              "protectedPixelsExact": 2680,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UDX_Spreak_2",
+          "pathId": "339362533994366234",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 52860,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 33588,
+              "protectedPixelsExact": 22392,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Circle",
+          "pathId": "-8286684456383676891",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 23796,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 15584,
+              "protectedPixelsExact": 12072,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Impact",
+          "pathId": "3334607731301501407",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 18720,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 9216,
+              "protectedPixelsExact": 9216,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Spreak_01",
+          "pathId": "-5156163561137233787",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 52860,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 22392,
+              "protectedPixelsExact": 22392,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Mirror",
+          "pathId": "4401675488815343540",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 9900,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 5976,
+              "protectedPixelsExact": 3984,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Mirror_2",
+          "pathId": "1825560382101531739",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 2960,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 1584,
+              "protectedPixelsExact": 1056,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Mirror_3",
+          "pathId": "5232299999073317603",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 9900,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 5976,
+              "protectedPixelsExact": 3984,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "break_boss_Spreak",
+          "pathId": "-6941595054764411926",
+          "sourceSharedGeneric": true,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 37776,
+              "protectedPixelsExact": 25184,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 41976,
+              "protectedPixelsExact": 27984,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "enemy_common_L@weak_enter_Shard",
+          "pathId": "-6323275450342176849",
+          "sourceSharedGeneric": true,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 8526,
+              "protectedPixelsExact": 17820,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 7892,
+              "protectedPixelsExact": 15962,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "break_boss_break",
+          "pathId": "1211794303736982116",
+          "sourceSharedGeneric": true,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 20028,
+              "protectedPixelsExact": 13410,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 21334,
+              "protectedPixelsExact": 14356,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "psCrc": "12BCE52E",
+      "vsCrc": "F00BA68E",
+      "candidateSha": "12759352dc2cf7b0c1a97094685733eda417268445f237b522ffbb635698cf1d",
+      "candidateBytes": 168612,
+      "nativeD3D12": {
+        "originalPsos": 2,
+        "candidatePsos": 2,
+        "negativeRoots": 8
+      },
+      "groups": [
+        {
+          "name": "Role_26_02@AttackHit2_UD_glow",
+          "pathId": "1555059715616110617",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 38870,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 27222,
+              "protectedPixelsExact": 18148,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UD_Spreak",
+          "pathId": "-8204585323522970535",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 13200,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 6190,
+              "protectedPixelsExact": 9288,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UD_Glow_2",
+          "pathId": "-430895570596738193",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 38984,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 17118,
+              "protectedPixelsExact": 27940,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_01@AttackHit2_UD_Wave_8",
+          "pathId": "-7389650652291038750",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 58192,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 22128,
+              "protectedPixelsExact": 29496,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UDX_glow",
+          "pathId": "-1393776196679418894",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 38870,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 27222,
+              "protectedPixelsExact": 18148,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit2_UDX_Spreak",
+          "pathId": "3575867885811708612",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 13200,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 6190,
+              "protectedPixelsExact": 9288,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UD_Spreak",
+          "pathId": "6790509224180354470",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 13200,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 6190,
+              "protectedPixelsExact": 9288,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@AttackHit_UDX_Spreak",
+          "pathId": "-8110152497240478971",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 13200,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 6190,
+              "protectedPixelsExact": 9288,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Glow",
+          "pathId": "5637585079336068587",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 18648,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 4728,
+              "protectedPixelsExact": 16152,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "Role_26_02@air_AAAA_end_g_Glow_2",
+          "pathId": "-8607107765525533256",
+          "sourceSharedGeneric": false,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 0,
+              "protectedPixelsExact": 24150,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 6994,
+              "protectedPixelsExact": 16424,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        },
+        {
+          "name": "break_boss_glow",
+          "pathId": "-3220200556448210821",
+          "sourceSharedGeneric": true,
+          "mutations": [
+            {
+              "name": "native",
+              "draws": 80,
+              "visibleChanges": 25380,
+              "protectedPixelsExact": 16920,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            },
+            {
+              "name": "dynamic_st_alpha",
+              "draws": 80,
+              "visibleChanges": 29682,
+              "protectedPixelsExact": 19788,
+              "wrongPrimaryTexturePairsExact": 20,
+              "alphaBitIdentical": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "draws": 5120,
+    "visibleChanges": 637838,
+    "dynamicChanges": 546128,
+    "priorProtectedPixels": 1359534,
+    "sourceGenericChanges": 192594
+  },
+  "metadataSha256": "67e0d0f65eda6bf4f229fcbf1af5702e5a5cdbc6c073d49bc81857bf984be550",
+  "shapeScopeSha256": "806850f331f6caf85311dba15ce7854596d58647f85c6db35ce436861f7c9e38",
+  "limitations": [
+    "No live per-material draw capture; runtime ST/alpha values are not proven screenshot causes.",
+    "Full archived raw texture SHA proves extraction provenance; shader uses corpus-checked sparse texel fingerprints, not full GPU texture hashing.",
+    "Common hit/break resources require explicit shared foreground single-character scope and can affect another actor using those same resources during that scope.",
+    "This validation is offline coverage evidence, not user visual acceptance."
+  ]
+}

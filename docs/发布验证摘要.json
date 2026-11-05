@@ -1,0 +1,38 @@
+{
+  "version": "v0.1.0-preview",
+  "latestGameVisualAcceptance": false,
+  "fixedRuntimeFiles": 77,
+  "managerTests": 17,
+  "releaseChecks": 26,
+  "independentPackageReview": true,
+  "independentPackageTests": 12,
+  "productionDispatch": {
+    "passed": true,
+    "gameUsed": false,
+    "productionInlExecutedWithApiShim": true,
+    "nativeCoreAttributionTested": false,
+    "programs": 21,
+    "positiveDispatches": 26,
+    "negativeDispatches": 583,
+    "lifetimeCycles": 40,
+    "assertions": 1559,
+    "productionInlSha256": "9862dec5181f4af717fcffb6bee9eeda6c4c96fff84973a81aef0081d2b40432"
+  },
+  "portableRelease": true,
+  "movedSource": true,
+  "corePatch": {
+    "passed": true,
+    "patchApplied": true,
+    "normalizedPatchedFilesMatch": true,
+    "patchedFiles": 24,
+    "upstreamCommit": "18deaa52de0c425a78b329e9cb3c497281cd00ec",
+    "shippedCoreSha256": "1c82a60c70735dc3f1938a4761d29e0012897acd72f6f054d2a53d666b9c6665",
+    "patchSha256": "6ab2ff0068326dd4f0c3553a0ec38bdc61689de7f74e2ac6513d08a8bbb359cb",
+    "thirdPartyLicenses": 22,
+    "gameLaunched": false
+  },
+  "rawStockFiles": 0,
+  "gameConfigurationFiles": 0,
+  "sessionLogsIncluded": false,
+  "remoteWritesPerformed": false
+}
