@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "version": "0.1.1-preview",
+  "scannedArchiveMembers": 104,
+  "machineStateIncluded": false,
+  "personalIdentifiersIncluded": false,
+  "credentialsIncluded": false,
+  "pngMetadataChecked": true,
+  "publicSystemFontConstantsReviewed": true,
+  "archiveSha256": "a3a83aaa9b949b502b154263b2f447bd01e197888d1534e0f55bd5bd92df0d7a"
+}

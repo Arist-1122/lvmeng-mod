@@ -32,7 +32,7 @@ def build(runtime,output,toolchain):
     for filename,exe,kind in [('ModelTool.cs','LvmengModelTool.exe','winexe'),('LaunchHelper.cs','LaunchHelper.exe','winexe'),('NormalLibraryLoad.cs','NormalLibraryLoad.exe','exe')]:
         args=[csc,'/nologo','/platform:x64','/optimize+','/target:'+kind,'/out:'+str(runtime/exe),'/r:System.Web.Extensions.dll']
         if filename=='ModelTool.cs':args+=['/r:System.Windows.Forms.dll','/r:System.Drawing.dll']
-        run('managed_'+Path(filename).stem,args+[SOURCE/'managed'/filename,SOURCE/'managed/GameLocation.cs'])
+        run('managed_'+Path(filename).stem,args+[SOURCE/'managed'/filename,SOURCE/'managed/GameLocation.cs',SOURCE/'common/GameCompatibility.cs'])
     # Execute the unchanged production inl with an API shim; no GPU/core/game.
     run('surface_probe_compile',[binary/'cl.exe','/nologo','/std:c++17','/MT','/O2','/W4','/EHsc','/utf-8',*('/I'+str(x)for x in includes),SOURCE/'tests/SurfaceScopeProbe.cpp','/Fe'+str(output/'SurfaceScopeProbe.exe'),'/Fo'+str(output/'SurfaceScopeProbe.obj'),'/link',*('/LIBPATH:'+str(x)for x in libraries),'kernel32.lib'])
     dispatch=json.loads(run('surface_probe_run',[output/'SurfaceScopeProbe.exe']));assert dispatch['passed'] and dispatch['programs']==21
@@ -51,5 +51,6 @@ def build(runtime,output,toolchain):
     WRITE(output/'build_result.json',report);return report
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--runtime',type=Path,default=SOURCE.parent/'runtime');p.add_argument('--output',type=Path,default=SOURCE.parent/'build');p.add_argument('--toolchain',type=Path,default=Path(os.environ.get('LVMENG_NATIVE_TOOLCHAIN',r'E:\lvmengmod\tools\portable-core-build')));a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--runtime',type=Path,default=SOURCE.parent/'runtime');p.add_argument('--output',type=Path,default=SOURCE.parent/'build');p.add_argument('--toolchain',type=Path,default=Path(os.environ['LVMENG_NATIVE_TOOLCHAIN']) if os.environ.get('LVMENG_NATIVE_TOOLCHAIN') else None);a=p.parse_args()
+    if a.toolchain is None:p.error('Pass --toolchain or set LVMENG_NATIVE_TOOLCHAIN')
     result=build(a.runtime.resolve(),a.output.resolve(),a.toolchain.resolve());print(json.dumps({k:v for k,v in result.items()if k!='sourceFiles'}))

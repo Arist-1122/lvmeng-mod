@@ -18,7 +18,7 @@ try {
 } finally { $stream.Dispose() }
 if ((Get-Item -LiteralPath $archive).Length -ne $manifest.bytes -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.sha256) { throw 'Complete archive checksum failed' }
 if ($VerifyOnly) { Write-Output 'Archive checksum passed'; exit 0 }
-$destination = Join-Path $localRoot 'v0.1.0-preview'
+$destination = Join-Path $localRoot $manifest.version
 Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
 $entry = Join-Path $destination $manifest.entryPoint
 if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.managerSha256) { throw 'Manager checksum failed' }

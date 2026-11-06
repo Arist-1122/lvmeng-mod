@@ -1,0 +1,119 @@
+{
+  "knownProfiles": [
+    {
+      "id": "official-20261106",
+      "label": "官网启动器客户端",
+      "samples": [
+        {
+          "path": "Lumin.exe",
+          "sha256": "80a0c31af0d57c8e478ec170963d7454ec0ef2522d33de2deed67b73f33f1f3d"
+        },
+        {
+          "path": "UnityPlayer.dll",
+          "sha256": "9c5b811fd4f7046c0ffcf923a3fb4119866d18e57e3504631a7b7f004b34fbfd"
+        },
+        {
+          "path": "FairGuardProtect.dll",
+          "sha256": "fac754ec67fbe15339622e920396484d7aeb9101f98fd3a74813b18010b334b6"
+        },
+        {
+          "path": "GameAssembly.dll",
+          "sha256": "0fe72fff125d83caffb09a1de40dd93daf0ef98251d44e223972f7a48fd3a88a"
+        }
+      ]
+    },
+    {
+      "id": "taptap-20261106",
+      "label": "TapTap客户端",
+      "samples": [
+        {
+          "path": "Lumin.exe",
+          "sha256": "9b38447fb66fd8dcd8b39a583f2b95ce0af1e96b412f4605846c6f0afe6c96f6"
+        },
+        {
+          "path": "UnityPlayer.dll",
+          "sha256": "d8cf2123a3e38251110684bf8da771222d0d0625283ce5d75587461d6004d76d"
+        },
+        {
+          "path": "FairGuardProtect.dll",
+          "sha256": "cd3675a00fec5699e88377cd94eeca2f67204cfa1bac24d3efa903db38c2717f"
+        },
+        {
+          "path": "GameAssembly.dll",
+          "sha256": "44716a0d3c2c784b07c6ad958039f2e02072cbf2ac251b174f64f6400a8e4140"
+        }
+      ]
+    }
+  ],
+  "compatibilityPolicy": {
+    "version": 1,
+    "appInfoPath": "Lumin_Data/app.info",
+    "companyName": "zhuziplay",
+    "productName": "Lumin",
+    "supportedUnityBranches": [
+      "2022.3"
+    ],
+    "requiredPe64Files": [
+      "Lumin.exe",
+      "UnityPlayer.dll",
+      "GameAssembly.dll"
+    ],
+    "requiredFiles": [
+      "FairGuardProtect.dll"
+    ],
+    "renderAnchorSets": [
+      {
+        "id": "role26-render-20261106",
+        "files": [
+          {
+            "path": "Lumin_Data/data.unity3d",
+            "bytes": 156316949,
+            "sha256": "97235642ba48621dfbfe1f376cad4263b6a20ce3456e7d0c46470af694226e58"
+          },
+          {
+            "path": "Lumin_Data/yoo/Assets/BundleFiles/b0/b024884066a4fb981b11d0ed5fea8d69/__data",
+            "bytes": 16854542,
+            "sha256": "89452f2115700a757371d5f716d8e811fda23129cff66f4ff33fffb80dd7b4fb"
+          },
+          {
+            "path": "Lumin_Data/yoo/Assets/BundleFiles/7a/7a9b442d3f886a14755342eed535d309/__data",
+            "bytes": 5865883,
+            "sha256": "fffdbe7be28ecf603808c9c220d4933e8afdbcb6809cf3cc962fe50e6af6c101"
+          },
+          {
+            "path": "Lumin_Data/yoo/Assets/BundleFiles/3b/3b2dcca4a5ed597427d37a44be50ae0c/__data",
+            "bytes": 47502425,
+            "sha256": "790217917e7ca375e1a2c8723978e346a6cf775e88c099f7cdd2a30f8183d30b"
+          }
+        ]
+      }
+    ],
+    "manifest": {
+      "directory": "Lumin_Data/yoo/Assets/ManifestFiles",
+      "fileNameRegex": "^Assets_prod_1\\.0\\.0_prod\\.w_(\\d+)\\.bytes$",
+      "packageName": "Assets",
+      "packageVersionRegex": "^prod_1\\.0\\.0_prod\\.w_(\\d+)$",
+      "bundleFilesRoot": "Lumin_Data/yoo/Assets/BundleFiles",
+      "requiredBundles": [
+        {
+          "name": "assets_share_assets_shader_act.bundle",
+          "guid": "b024884066a4fb981b11d0ed5fea8d69",
+          "bytes": 16854542,
+          "sha256": "89452f2115700a757371d5f716d8e811fda23129cff66f4ff33fffb80dd7b4fb"
+        },
+        {
+          "name": "assets_unityshaders.bundle",
+          "guid": "7a9b442d3f886a14755342eed535d309",
+          "bytes": 5865883,
+          "sha256": "fffdbe7be28ecf603808c9c220d4933e8afdbcb6809cf3cc962fe50e6af6c101"
+        },
+        {
+          "name": "assets_share_assets_arts_characters_role_role_26_02_tex.bundle",
+          "guid": "3b2dcca4a5ed597427d37a44be50ae0c",
+          "bytes": 47502425,
+          "sha256": "790217917e7ca375e1a2c8723978e346a6cf775e88c099f7cdd2a30f8183d30b"
+        }
+      ]
+    }
+  }
+}

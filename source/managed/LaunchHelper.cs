@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 class LaunchHelper {
     class Item {public string path,sha256;}
-    class Package {public int version;public bool runtimeReady;public string helperPath,loaderPath,corePath,bootstrapPath,addonPath,contractPath,configTemplatePath,contractSha256;public Item[] files,gameSamples;}
+    class Package {public int version;public bool runtimeReady;public string helperPath,loaderPath,corePath,bootstrapPath,addonPath,contractPath,configTemplatePath,contractSha256;public Item[] files,gameSamples;public GameCompatibility.Result compatibility;}
     static readonly string Root=AppDomain.CurrentDomain.BaseDirectory;
     static readonly JavaScriptSerializer Json=new JavaScriptSerializer();
     static readonly UTF8Encoding Utf8=new UTF8Encoding(false);
@@ -36,13 +36,14 @@ class LaunchHelper {
         foreach(var f in p.files){string path=At(f.path);if(verified.ContainsKey(path))throw new Exception("文件清单包含重复路径。");if(Hash(path)!=f.sha256)throw new Exception("包内文件发生变化："+f.path);verified.Add(path,f.sha256);}
         foreach(var name in new[]{"LvmengModelTool.exe",p.helperPath,p.loaderPath,p.corePath,p.bootstrapPath,p.addonPath,p.contractPath,p.configTemplatePath})if(!verified.ContainsKey(At(name)))throw new Exception("缺少必要运行文件校验："+name);
         if(verified[At(p.contractPath)]!=p.contractSha256)throw new Exception("合同校验关联不一致。");
-        foreach(var f in p.gameSamples){string path=GameLocation.Read(Root).Sample(f.path);if(Hash(path)!=f.sha256)throw new Exception("客户端版本校验失败。");}
+        p.compatibility=GameCompatibility.Validate(Root,GameLocation.Read(Root).gameExecutable);
         string addon=At(p.addonPath);foreach(var candidate in Directory.GetFiles(Path.GetDirectoryName(addon),"*",SearchOption.AllDirectories)){
             string ext=Path.GetExtension(candidate).ToLowerInvariant();if((ext==".dll"||ext==".addon"||ext==".addon32"||ext==".addon64")&&!candidate.Equals(addon,StringComparison.OrdinalIgnoreCase))throw new Exception("发现未校验的额外图形组件，请保留本程序独立目录。");
         }
         At(p.loaderPath);if(p.contractSha256==null||p.contractSha256.Length!=64)throw new Exception("运行合同缺失。");return p;
     }
     static int Main(string[] args){
+        if(args.Length==3&&args[0]=="--check-compatibility")return GameCompatibility.RunReadOnlyCli(args[1],args[2]);
         session=args.Length==4?args[1]:"";Guid g;
         if(args.Length!=4||args[0]!="--arm"||session.Length!=32||!Guid.TryParseExact(session,"N",out g)||!Int32.TryParse(args[2],out guiPid)||guiPid<=0||!Int64.TryParse(args[3],out guiStartTicks)||guiStartTicks<=0)return 2;
         status=Path.Combine(Root,"control","launch_"+session+".json");
@@ -53,7 +54,7 @@ class LaunchHelper {
             try{ownsLock=launchLock.WaitOne(0);}catch(AbandonedMutexException){ownsLock=true;}
             if(!ownsLock)throw new Exception("另一个启动助手正在处理本次游戏启动。");
             if(!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))throw new Exception("启动助手未取得本次所需权限。");
-            CheckOwner();var package=ValidatePackage();state["contractSha256"]=package.contractSha256;state["guiPid"]=guiPid;state["guiStartTicks"]=guiStartTicks;
+            CheckOwner();var package=ValidatePackage();state["clientCompatibilityState"]=package.compatibility.state;state["clientCompatibilityProfile"]=package.compatibility.profileId;state["contractSha256"]=package.contractSha256;state["guiPid"]=guiPid;state["guiStartTicks"]=guiStartTicks;
             var before=Process.GetProcessesByName("Lumin");try{if(before.Length!=0)throw new Exception("游戏仍在运行，请先正常退出。");}finally{foreach(var p in before)p.Dispose();}
             // ReShade may save UI preferences into its working INI. The pinned
             // template is immutable; only our separate working profile resets.

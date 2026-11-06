@@ -21,3 +21,11 @@ python stage_manager.py
 运行包只包含改色后的纹理流；完整原版 stock 纹理流不分发。生产 Matcher 以稀疏块快速排除，再对真实上传内容计算完整 mip SHA-256 证明身份；稀疏匹配本身不授权替换。独立真实 core/WARP 夹具已确认72 mip与全部6个owner，最终游戏场景仍需实测。
 
 `PortableRuntime.hpp` 从 addon 模块自身定位运行包，严格读取 GameLocation 配置。AddonInit 验证精确宿主、当前 core 实际路径、core 和合同 SHA，并保留会话/所有者/租约守卫。编译后的完整性检查和目录迁移检查不能代替实机画面验收。
+
+## v0.1.1 客户端兼容检查
+
+管理器、运行器、启动助手和加载器共同编译 `common/GameCompatibility.cs`。客户端位置继续由用户本机四字段 `game-location.json` 提供，不写入发布清单。`package.json` 中的 `knownProfiles` 只存相对路径与摘要；`compatibilityPolicy` 另行检查游戏身份、AMD64 PE、Unity 分支、完整渲染来源和最高头内版本的有效本地缓存清单。已知版本仍须通过全部渲染检查，普通程序更新可在渲染来源完全一致时识别为 `compatible-update`。这不能替代在线活动资源与游戏画面验收。
+
+四个入口均支持只读命令 `--check-compatibility <runtime-root> <Lumin.exe>`；它仅输出结果和退出码，不启动游戏、请求管理员或调用加载器。`common/CompatibilityCheck.cs` 提供独立控制台入口，可与同目录兼容检查源码及 `System.Web.Extensions.dll` 一起编译。`common/package_metadata.json` 保存发布所用的相对策略。
+
+完整原生重编译需要显式提供 `--toolchain` 或环境变量 `LVMENG_NATIVE_TOOLCHAIN`；脚本不再假设研究机器上的工具链绝对位置。

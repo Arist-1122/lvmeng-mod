@@ -34,6 +34,7 @@ class NormalLibraryLoad {
  static ProcessModule[] Modules(Process p){p.Refresh();return p.Modules.Cast<ProcessModule>().ToArray();}
  static bool Same(string a,string b){return string.Equals(Path.GetFullPath(a),Path.GetFullPath(b),StringComparison.OrdinalIgnoreCase);}
  static int Main(string[] args){
+  if(args.Length==3&&args[0]=="--check-compatibility")return GameCompatibility.RunReadOnlyCli(args[1],args[2]);
   string root=AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
   string dll=Path.Combine(root,"core","dxgi.dll");
   string bootstrap=Path.Combine(root,"core","PathPinBootstrap.dll");
@@ -67,6 +68,7 @@ class NormalLibraryLoad {
    if(before.Any(m=>Same(m.FileName,dll)||Same(m.FileName,bootstrap)))throw new Exception("ALREADY_LOADED_NO_RETRY");
    string targetExecutable=before.Single(m=>m.ModuleName.Equals(target.ProcessName+".exe",StringComparison.OrdinalIgnoreCase)).FileName;
    if(target.ProcessName=="Lumin" && !Same(targetExecutable,GameLocation.Read(root).gameExecutable))throw new Exception("GAME_EXECUTABLE_PATH_NOT_ALLOWED");
+   if(target.ProcessName=="Lumin")GameCompatibility.Validate(root,targetExecutable);
    if(target.ProcessName=="LVMeng_DX12_POC" && !Same(targetExecutable,Path.Combine(root,"harness","LVMeng_DX12_POC.exe")))throw new Exception("POC_EXECUTABLE_PATH_NOT_ALLOWED");
    string targetDirectory=Path.GetDirectoryName(targetExecutable);
    if(File.Exists(Path.Combine(targetDirectory,"ReShade.ini")))throw new Exception("TARGET_BASEPATH_CONFIG_EXISTS_REVIEW_REQUIRED");

@@ -18,7 +18,7 @@ class ModelTool : Form {
     public class Package {
         public int version; public bool runtimeReady,liveGameVerified;
         public string contractSha256,releaseLabel,helperPath,loaderPath,corePath,bootstrapPath,addonPath,contractPath,configTemplatePath,previewPath,reportPath;
-        public FileItem[] files,gameSamples;
+        public FileItem[] files,gameSamples; public GameCompatibility.Result compatibility;
     }
     public class HelperState { public string sessionId,state,error,targetStartUtc; public int targetPid,exitCode; }
     public class AddonState {
@@ -77,10 +77,7 @@ class ModelTool : Form {
         foreach(var f in p.files){string path=SafePath(f.path);if(verified.ContainsKey(path))throw new Exception("文件清单包含重复路径。");if(Hash(path)!=f.sha256)throw new Exception("文件校验未通过："+f.path);verified.Add(path,f.sha256);}
         foreach(var name in new[]{"LvmengModelTool.exe",p.helperPath})if(!verified.ContainsKey(SafePath(name)))throw new Exception("缺少入口文件校验："+name);
         if(p.gameSamples==null)throw new Exception("缺少客户端版本检查。");
-        foreach(var f in p.gameSamples) {
-            string path=GameLocation.Read(Root).Sample(f.path);
-            if(Hash(path)!=f.sha256)throw new Exception("客户端版本发生变化，需要重新检查适配。");
-        }
+        p.compatibility=GameCompatibility.Validate(Root,GameLocation.Read(Root).gameExecutable);
         if(requireRuntime) {
             if(!p.runtimeReady)throw new Exception("此构建仍在验证中，尚未开放游戏替换。");
             if(p.contractSha256==null||p.contractSha256.Length!=64||p.gameSamples.Length==0)throw new Exception("运行合同不完整。");
@@ -120,7 +117,7 @@ class ModelTool : Form {
         try {package=ValidatePackage(false);start.Enabled=package.runtimeReady&&!helperPending;
             Status(package.runtimeReady?"已准备好试用":"构建验证中",package.runtimeReady?"请先正常退出游戏，再点击启动。完成 Windows 权限确认后，将按管理器设置启动；手动模式请自行打开游戏。":"替换组件还在完成验证。程序会显示真实进度，验证通过后才开放启动。",package.liveGameVerified?"已完成实机验证":"保留原版服装网格 · 退出游戏后恢复");
             start.BackColor=package.runtimeReady?Color.FromArgb(37,106,91):Color.FromArgb(224,230,234);
-            Note("包内文件与客户端样本检查通过。"+(package.runtimeReady?"":"游戏入口暂未开放。"));
+            Note("包内文件校验通过。"+package.compatibility.message+(package.runtimeReady?"":"游戏入口暂未开放。"));
         }catch(Exception e){Status("检查未通过",e.Message,"停止启动，已有游戏不受影响。");Note(e.Message);}
     }
     void StartTrial() {
@@ -199,6 +196,7 @@ class ModelTool : Form {
     }
     void OpenLocal(string relative){try{if(String.IsNullOrEmpty(relative))throw new Exception("此构建尚未生成该页面。");Process.Start(new ProcessStartInfo(SafePath(relative)){UseShellExecute=true});}catch(Exception e){Note(e.Message);}}
     [STAThread]static int Main(string[] args) {
+        if(args.Length==3&&args[0]=="--check-compatibility")return GameCompatibility.RunReadOnlyCli(args[1],args[2]);
         Directory.CreateDirectory(Logs);
         if(args.Length==1&&(args[0]=="--check-only"||args[0]=="--check-runtime-only")) {try{var p=ValidatePackage(args[0]=="--check-runtime-only");Atomic(Path.Combine(Logs,"check_only.json"),new{passed=true,runtimeReady=p.runtimeReady,liveGameVerified=p.liveGameVerified,gameLaunched=false,adminRequested=false});return 0;}catch(Exception e){Atomic(Path.Combine(Logs,"check_only.json"),new{passed=false,error=e.Message,gameLaunched=false,adminRequested=false});return 2;}}
         bool created;using(var single=new System.Threading.Mutex(true,@"Local\LvmengModelTool_v1",out created)){

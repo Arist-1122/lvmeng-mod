@@ -20,5 +20,5 @@ def assemble(output):
     return manifest
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=ROOT/'.local/lvmeng-mod-manager-v0.1.0-preview.zip')
+    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=ROOT/'.local/lvmeng-mod-manager-v0.1.1-preview.zip')
     assemble(parser.parse_args().output)

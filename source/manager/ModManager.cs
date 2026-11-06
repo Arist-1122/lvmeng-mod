@@ -130,9 +130,9 @@ public sealed class Store {
         var cfg = new GameLocation { gameExecutable = settings.gameExecutable, launchMode = settings.launchMode };
         Write(Path.Combine(mod.Runtime, "game-location.json"), cfg);
     }
-    public void ValidateGame(InstalledMod mod) {
+    public GameCompatibility.Result ValidateGame(InstalledMod mod) {
         Configure(mod); var game = GameLocation.Read(mod.Runtime);
-        foreach (var f in mod.package.gameSamples) if (Hash(game.Sample(f.path)) != f.sha256) throw new Exception("客户端版本不匹配：" + f.path);
+        return GameCompatibility.Validate(mod.Runtime, game.gameExecutable);
     }
 }
 
@@ -151,8 +151,8 @@ public sealed class CharacterDialog : Form {
 public sealed class ManagerForm : Form {
     Store store; ListView mods; TextBox game, details; ComboBox launch; Label count; List<InstalledMod> installed; Dictionary<string, Process> runners = new Dictionary<string, Process>();
     public ManagerForm(Store s) {
-        store = s; Text = "绿梦 Mod 管理器 · v0.1.0 预览版"; Font = new Font("Microsoft YaHei UI", 10); ClientSize = new Size(1010, 680); MinimumSize = new Size(1026, 719); StartPosition = FormStartPosition.CenterScreen; BackColor = Color.FromArgb(242, 244, 248);
-        var title = new Label { Text = "绿梦 Mod 管理器 · v0.1.0 预览版", Location = new Point(25, 20), AutoSize = true, Font = new Font(Font.FontFamily, 22, FontStyle.Bold) }; Controls.Add(title);
+        store = s; Text = "绿梦 Mod 管理器 · v0.1.1 预览版"; Font = new Font("Microsoft YaHei UI", 10); ClientSize = new Size(1010, 680); MinimumSize = new Size(1026, 719); StartPosition = FormStartPosition.CenterScreen; BackColor = Color.FromArgb(242, 244, 248);
+        var title = new Label { Text = "绿梦 Mod 管理器 · v0.1.1 预览版", Location = new Point(25, 20), AutoSize = true, Font = new Font(Font.FontFamily, 22, FontStyle.Bold) }; Controls.Add(title);
         Controls.Add(new Label { Text = "角色与皮肤独立管理 · 每次启动一个已适配的 Mod", AutoSize = true, Location = new Point(28, 65), ForeColor = Color.DimGray });
         Controls.Add(new Label { Text = "游戏 Lumin.exe", AutoSize = true, Location = new Point(28, 111) });
         game = new TextBox { Text = s.settings.gameExecutable, Location = new Point(155, 107), Width = 685 }; Controls.Add(game);
@@ -184,10 +184,11 @@ public sealed class ManagerForm : Form {
     void AddCharacter() { using (var d = new CharacterDialog()) if (d.ShowDialog(this) == DialogResult.OK) { store.AddCharacter(d.Values[0], d.Values[1], d.Values[2], d.Values[3]); Reload(); } }
     void Import() { using (var d = new OpenFileDialog { Filter = "Mod 清单|mod.json", Title = "选择解压后 Mod 文件夹中的 mod.json" }) if (d.ShowDialog(this) == DialogResult.OK) { UseWaitCursor = true; try { var m = store.Import(Path.GetDirectoryName(d.FileName)); Reload(); Note("已导入并校验：" + m.spec.name + "。角色与皮肤已登记；新导入项默认停用，点击启用后可打开运行器。"); } finally { UseWaitCursor = false; } } }
     void Toggle(bool enabled) { var m = Selected(); store.Enable(m, enabled); Process p; if (!enabled && runners.TryGetValue(m.spec.id, out p) && !p.HasExited) p.CloseMainWindow(); Reload(); Note(enabled ? "已启用。相同角色、相同皮肤的其他 Mod 已停用；点击打开运行器开始。" : "已停用，并请求关闭本管理器打开的运行器。已上传贴图须正常退出游戏后恢复。"); }
-    void Check() { var m = Selected(); SaveLocation(); UseWaitCursor = true; try { m = store.Inspect(m.folder, true); store.ValidateGame(m); Note("包内 SHA-256 与所选游戏的全部版本样本校验通过。\r\n这不代表所有特效已完成实机验收。"); } finally { UseWaitCursor = false; } }
-    void OpenRunner() { var m = Selected(); if (!store.settings.enabledModIds.Contains(m.spec.id)) throw new Exception("请先启用这个 Mod。"); SaveLocation(); m = store.Inspect(m.folder, true); if (!m.package.runtimeReady) throw new Exception("此 Mod 尚未开放运行。"); store.ValidateGame(m); Process old; if (runners.TryGetValue(m.spec.id, out old) && !old.HasExited) throw new Exception("这个 Mod 的运行器已打开。"); string entry = Store.Child(m.Runtime, m.spec.entryPoint); runners[m.spec.id] = Process.Start(new ProcessStartInfo(entry) { WorkingDirectory = m.Runtime, UseShellExecute = true }); Note("已打开 " + m.spec.name + " 的运行器。请在运行器中点击启动，按其中状态完成测试。"); }
+    void Check() { var m = Selected(); SaveLocation(); UseWaitCursor = true; try { m = store.Inspect(m.folder, true); var compatibility = store.ValidateGame(m); Note("包内文件校验通过。" + compatibility.message); } finally { UseWaitCursor = false; } }
+    void OpenRunner() { var m = Selected(); if (!store.settings.enabledModIds.Contains(m.spec.id)) throw new Exception("请先启用这个 Mod。"); SaveLocation(); m = store.Inspect(m.folder, true); if (!m.package.runtimeReady) throw new Exception("此 Mod 尚未开放运行。"); var compatibility = store.ValidateGame(m); Process old; if (runners.TryGetValue(m.spec.id, out old) && !old.HasExited) throw new Exception("这个 Mod 的运行器已打开。"); string entry = Store.Child(m.Runtime, m.spec.entryPoint); runners[m.spec.id] = Process.Start(new ProcessStartInfo(entry) { WorkingDirectory = m.Runtime, UseShellExecute = true }); Note("已打开 " + m.spec.name + " 的运行器。" + compatibility.message); }
     static void CreateHandles(Control control) { var handle = control.Handle; foreach (Control c in control.Controls) CreateHandles(c); }
     [STAThread] public static int Main(string[] args) {
+        if (args.Length == 3 && args[0] == "--check-compatibility") return GameCompatibility.RunReadOnlyCli(args[1], args[2]);
         if (args.Length == 2 && args[0] == "--self-test") return SelfTests.Run(args[1]);
         if (args.Length == 2 && args[0] == "--verify-mod") { try { var s = new Store(AppDomain.CurrentDomain.BaseDirectory); var m = s.Inspect(args[1], true); Store.Write(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "verify-result.json"), new { passed = true, id = m.spec.id, files = m.package.files.Length, gameLaunched = false, loaderInvoked = false }); return 0; } catch (Exception e) { Store.Write(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "verify-result.json"), new { passed = false, error = e.Message, gameLaunched = false }); return 2; } }
         if (args.Length == 3 && args[0] == "--render-preview") { Application.EnableVisualStyles(); using (var f = new ManagerForm(new Store(args[1]))) { f.ShowInTaskbar = false; CreateHandles(f); using (var bitmap = new Bitmap(f.Width, f.Height)) { f.DrawToBitmap(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height)); bitmap.Save(args[2], System.Drawing.Imaging.ImageFormat.Png); } } return 0; }

@@ -19,15 +19,15 @@ jobs:
       - name: Read the committed package
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Reassemble and verify every part
-        run: python3 tools/assemble_release.py --output "$RUNNER_TEMP/lvmeng-mod-manager-v0.1.0-preview.zip"
+        run: python3 tools/assemble_release.py --output "$RUNNER_TEMP/lvmeng-mod-manager-v0.1.1-preview.zip"
       - name: Publish the complete archive
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view v0.1.0-preview --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/v0.1.0-preview" -f sha="$GITHUB_SHA" -F force=false
-            gh release upload v0.1.0-preview "$RUNNER_TEMP/lvmeng-mod-manager-v0.1.0-preview.zip" --clobber --repo "$GITHUB_REPOSITORY"
+          if gh release view v0.1.1-preview --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/v0.1.1-preview" -f sha="$GITHUB_SHA" -F force=false
+            gh release upload v0.1.1-preview "$RUNNER_TEMP/lvmeng-mod-manager-v0.1.1-preview.zip" --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create v0.1.0-preview "$RUNNER_TEMP/lvmeng-mod-manager-v0.1.0-preview.zip" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "v0.1.0 绿梦 Mod 管理器预览版" --prerelease --notes-file docs/发布说明.md
+            gh release create v0.1.1-preview "$RUNNER_TEMP/lvmeng-mod-manager-v0.1.1-preview.zip" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "v0.1.1 绿梦 Mod 管理器预览版" --prerelease --notes-file docs/发布说明.md
           fi
