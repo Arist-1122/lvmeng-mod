@@ -1,240 +1,240 @@
 {
-  "version": "0.1.1-preview",
-  "fileName": "lvmeng-mod-manager-v0.1.1-preview.zip",
-  "entryPoint": "lvmeng-mod-manager-v0.1.1-preview/LvmengModManager.exe",
-  "bytes": 23865183,
-  "sha256": "a3a83aaa9b949b502b154263b2f447bd01e197888d1534e0f55bd5bd92df0d7a",
-  "managerSha256": "0e1d44a0c80877c7cdc32e13520fbc1f04455d89696c15a46ad44cbb37f0eb82",
+  "version": "0.1.2-preview",
+  "fileName": "lvmeng-mod-manager-v0.1.2-preview.zip",
+  "entryPoint": "lvmeng-mod-manager-v0.1.2-preview/LvmengModManager.exe",
+  "bytes": 23870152,
+  "sha256": "75b80ccf65d3e61f42e4e8d882a63971b949133a8c715c5cd184f3035dfc704d",
+  "managerSha256": "95903e4d0a80359f7d13fee3bc8d22a81f8db0f997f6921f489980276e500aa7",
   "parts": [
     {
       "path": "distribution/manager-000.part",
       "bytes": 524288,
-      "sha256": "e202b58cb0c13f581b53ff265381b38e78eb082a577fc484ae284e43a0968d5b"
+      "sha256": "f53503f4dcffb5c6642174bc67d4be0e7abad0afac8f9bd4714fca4a3513147b"
     },
     {
       "path": "distribution/manager-001.part",
       "bytes": 524288,
-      "sha256": "10b6f881351439bd7dd9bc97d36ab5d9d23453cb8bc76770c992b0702ec4504a"
+      "sha256": "d69969f44a91e3a9d2e6a690ff000659935c837d4e32e04fb8830f6829faff92"
     },
     {
       "path": "distribution/manager-002.part",
       "bytes": 524288,
-      "sha256": "640afa30f629f0a3468fe2c4c687af270eb31b7c57f8571c4d072d439de3991f"
+      "sha256": "c23a9c3fb64291c72ee4ab0a6c4b309ddb02bb3f6e008ac9f5a0fb553347523d"
     },
     {
       "path": "distribution/manager-003.part",
       "bytes": 524288,
-      "sha256": "e3ed2584642d3cb86c366c661d2e854a142857556df777e0b88267fe590827ff"
+      "sha256": "ca7058df4941b1ce5b73a82e18bba1ea3246838f4b96d1641bb5271fcc683b71"
     },
     {
       "path": "distribution/manager-004.part",
       "bytes": 524288,
-      "sha256": "99bab3392ee94d2640cddc0ea5e4ebe255681fa5184449f03cd497bc8e16f208"
+      "sha256": "149fe6aaf8f0c8cf2ef85132068268838bccb2fb809ca61e7d6357474756b27d"
     },
     {
       "path": "distribution/manager-005.part",
       "bytes": 524288,
-      "sha256": "6a3b6d09be4a5ce73a68988a46687d9abbbecde29c5e426de2c99d7a3cf1c812"
+      "sha256": "cdb383fa9c925e495948ee8ae943ef632778d7e789071d6d67fad6dc146ae3ed"
     },
     {
       "path": "distribution/manager-006.part",
       "bytes": 524288,
-      "sha256": "22507e3db723ac37c1be2819167ed66f74325cd89562caa8d48beb2a31be97b0"
+      "sha256": "886e88bab2e4382d1bf8a2ed9db086b683e16279153a9a4891b98d7f2d8741a2"
     },
     {
       "path": "distribution/manager-007.part",
       "bytes": 524288,
-      "sha256": "d6f0c4dcc756541482f293535f0b3125d3732b84ffb9ffd448bed40120f758cb"
+      "sha256": "e57f43855025979b4215776063ab20b8444e2f553bdea63e185d9fc6c0e88eb2"
     },
     {
       "path": "distribution/manager-008.part",
       "bytes": 524288,
-      "sha256": "21bf2e91a0637c987eace201e604460f548c937866270bba9a98b832b1ae21b5"
+      "sha256": "6e8aa8b5380ae914041e8cfeab6a84713fb2efa255f625ef56c30d7d5ab4138d"
     },
     {
       "path": "distribution/manager-009.part",
       "bytes": 524288,
-      "sha256": "5d5b6a2be78ff9d78378ccfe867c9e40a22cef737ce401b20d748327b258b88f"
+      "sha256": "b0f08c487f33517e277ab1d03479449227aa4d10e1db67f727d11ae3fd750a7a"
     },
     {
       "path": "distribution/manager-010.part",
       "bytes": 524288,
-      "sha256": "9e6a24fd0b376c866479cd581579684d313484a495a77eb5933a26e5be6b4435"
+      "sha256": "5e03cac5449c8bb9fbb3fa0a1b155f40c5d4e38224e7b81d4a624f8d95a6a6a1"
     },
     {
       "path": "distribution/manager-011.part",
       "bytes": 524288,
-      "sha256": "6c9b5f9d8931ca65cafdd996b01677514fc5b3aadea3ecaed36f76082923ff02"
+      "sha256": "029f87c1bd972213c8d18027a71af78411dbaf48dc3d473a198d5409ae2c2bad"
     },
     {
       "path": "distribution/manager-012.part",
       "bytes": 524288,
-      "sha256": "42176ecb1b1df947b51861b2e379cc8c6c9d4a495d73e9755d5700e5c88a9016"
+      "sha256": "b3496e52275206c1c89972261c52e37b3ac2145ab4ba9152b7a35466d5456964"
     },
     {
       "path": "distribution/manager-013.part",
       "bytes": 524288,
-      "sha256": "f00d0a07bdb69d4d171777e299624beace5908321ada8ef93a16043627a2689b"
+      "sha256": "6f93ff992b6f58f92b7b307d9b60a8df867bb71bf6e8634454c824f325921a9a"
     },
     {
       "path": "distribution/manager-014.part",
       "bytes": 524288,
-      "sha256": "dabf976de3d58124d9ef59d4164db96a1296b25243928dad87b2d6dab7e03b42"
+      "sha256": "db07385beb6152e9c900c97934dbe9fd89b3c471efb777fe966beb4e1b75b497"
     },
     {
       "path": "distribution/manager-015.part",
       "bytes": 524288,
-      "sha256": "d289b90777354d2ad4417c4085528432ec80faf2738cdb796980d7310b656728"
+      "sha256": "219de29d89df7a468580d074a8cef68a0bb80d74ea05ea3ba2ccfc1075d9ddbb"
     },
     {
       "path": "distribution/manager-016.part",
       "bytes": 524288,
-      "sha256": "30e0b1e2cf2c746af36b9164c1894b2fcd5f259a6fc502bab1e7d8fe2f0179d8"
+      "sha256": "20077c469bcd2cadc31cea4fe08df9622eb0dfa2bc4657396719187e2b738991"
     },
     {
       "path": "distribution/manager-017.part",
       "bytes": 524288,
-      "sha256": "53c6262726d3094196c4e469c753c0b9f262d914397c877d240228ab4ee43fa0"
+      "sha256": "dd1032ff113f82b3c7e014c52ae25bdc8f610241f3b2a4d50920e9d2b68aed94"
     },
     {
       "path": "distribution/manager-018.part",
       "bytes": 524288,
-      "sha256": "05cabc6d61dbf1b349f15b06a188bd94eebd2d9e3361b66cf2ef1eaac2c460a5"
+      "sha256": "5c5fec28f1ec6831ca9633294b0215333e9928d624a82a18cfaf343ab62730f1"
     },
     {
       "path": "distribution/manager-019.part",
       "bytes": 524288,
-      "sha256": "1bdcabdf3e28aef22d66182ff18087b0f6776b77199f054257455b34883a2404"
+      "sha256": "0efe1a0ef5c968c8142f4b1abe8f27e41f8af2ed456c84bcd7db372b1c74b30d"
     },
     {
       "path": "distribution/manager-020.part",
       "bytes": 524288,
-      "sha256": "5f524055a7d703a8ea121d34e0968742aba8dd6627f7416d448dcf7cce464621"
+      "sha256": "05952bc8d4c535e10472c7161e6a9fedf68cd9742192cd980c60244e4532b631"
     },
     {
       "path": "distribution/manager-021.part",
       "bytes": 524288,
-      "sha256": "9a01742b1053570ab6b9547ff651d778d97eedca1b824fa6327be618e508878d"
+      "sha256": "3d8030e409d31489d0db275deb23118654d2c86bef3eba9cef80bcbe4f9c357c"
     },
     {
       "path": "distribution/manager-022.part",
       "bytes": 524288,
-      "sha256": "0445b9594cf8e57464578df6cfc1fb98a243fb8e9e7c8d161c9d01f144bb939f"
+      "sha256": "2ec5f4c9b16e8700d58efffe73787289dc5b85fd0c9c8d6df672caeea9cd3859"
     },
     {
       "path": "distribution/manager-023.part",
       "bytes": 524288,
-      "sha256": "64c69fc490bee55de67e591e3a18db9cd5d4df2e54ed800eaa49c2ae8e38ef55"
+      "sha256": "1088005b61c03ec7931722019c8db7943e093b1f59c751c847804b16aabc17fe"
     },
     {
       "path": "distribution/manager-024.part",
       "bytes": 524288,
-      "sha256": "328287fff5471c06be8b33f50209dd2c426283f4fdeac6571ff192fb9e51e920"
+      "sha256": "03049950b2657988120ad4c1b76f2cb0886fdb139074bed89fd2c608d4c43d0a"
     },
     {
       "path": "distribution/manager-025.part",
       "bytes": 524288,
-      "sha256": "1be823af6df09dcb1a85fe80d87ac32c51975478eaedbc8535547314be8bb442"
+      "sha256": "9160335a5fcee87e2a947326cf6123a60c39338758e839a6ab2b29378f336670"
     },
     {
       "path": "distribution/manager-026.part",
       "bytes": 524288,
-      "sha256": "533c1a2fd01cafadef424de3ede330d1abc0f0dd50b5b94edf9606e5e742010a"
+      "sha256": "fc2074506632f8155680bbd8d9403338f07db77a84a1726788a79126904f915d"
     },
     {
       "path": "distribution/manager-027.part",
       "bytes": 524288,
-      "sha256": "6eacb5ee59d2322b19007e966dc7f95928041632c3f79da067f8db7d91b041a1"
+      "sha256": "35359e21c88fa3c82b0399dc4913c6d9a73818b2dc9dade4722f7b0648cbe781"
     },
     {
       "path": "distribution/manager-028.part",
       "bytes": 524288,
-      "sha256": "df79ca642dfe4cee82881d09a80e0b04ff51808ae0c9c989acc700e63cdac580"
+      "sha256": "fde0b638595ba70bcfa7b06489753db34d1e9e0f902a331cda0c670a373049f8"
     },
     {
       "path": "distribution/manager-029.part",
       "bytes": 524288,
-      "sha256": "ad8ae7ff26988794959636c5d8841936f140c09f636111fe616caf6ab2d25515"
+      "sha256": "ddad58e03a9b5e46766cb0c7c8e8ab2ad42b8807d6c34c6a7259b46b29eb7a4a"
     },
     {
       "path": "distribution/manager-030.part",
       "bytes": 524288,
-      "sha256": "75626d44155b870f129b4f37c44acaac01da30abf329ee9d435958dfdc3c70c8"
+      "sha256": "0f923ac4a48686e42605cdcd7e21aad8db474d20bb482cea43d06ae70d2876ef"
     },
     {
       "path": "distribution/manager-031.part",
       "bytes": 524288,
-      "sha256": "7ded092d3ea3bf4dc1fd69698a55ccfdf6f6f69e0e379a1995253e35ad3289f1"
+      "sha256": "2ec7f69cd2365331f44541de3ab8a5e127d027cf11289759f7ae44f3c6c781f6"
     },
     {
       "path": "distribution/manager-032.part",
       "bytes": 524288,
-      "sha256": "17c190a821c1245dbfdebbadcbe900cf8f006697aebe955f866c5e5937ce8000"
+      "sha256": "c441377ee75a1cabf7c9cfc4ded66bcfb89ec3db62e5d3914d653a2df70d0918"
     },
     {
       "path": "distribution/manager-033.part",
       "bytes": 524288,
-      "sha256": "03d603fe59918fc075d8dff8a873bb5bba13c3589c278b71466b0e4228376a6f"
+      "sha256": "015e55ae9ddf3a6b3fada1c3fff8dfeca6f865ff1f49c103a0ab68a0f56293a4"
     },
     {
       "path": "distribution/manager-034.part",
       "bytes": 524288,
-      "sha256": "4754c7d5acd2a1471886fb92e41987c5c5dae8dcad57dad058327ca487ec81c1"
+      "sha256": "0b6256036aa9180565a33fe5c835284bfcd3fc20e41e53ad3a6b76aa85529dc2"
     },
     {
       "path": "distribution/manager-035.part",
       "bytes": 524288,
-      "sha256": "27a06685feaa3c5c471b1a84497e53090cae546dfaba209bc2f3c005ad764754"
+      "sha256": "af4a3e36a0c3c1b0608de9871bdac09af7d8794cce8c2ed40cbd7d74a251688e"
     },
     {
       "path": "distribution/manager-036.part",
       "bytes": 524288,
-      "sha256": "62e5f7c26d4532232f8efb69174f8508f21dd8cd77101f76608dc563ec54ccda"
+      "sha256": "55feb45be58e346ace7b12b7a2575188ad8f57d065d962bc1dee2f9d87811427"
     },
     {
       "path": "distribution/manager-037.part",
       "bytes": 524288,
-      "sha256": "74bc4d61e2ff81ac12ed162212384b8b3642f109d381d305b4953a6978615a66"
+      "sha256": "4868effacd5ee60f5333c57a9118df994e1760a9ca577893c992a303fd9c9ceb"
     },
     {
       "path": "distribution/manager-038.part",
       "bytes": 524288,
-      "sha256": "1ab33f2468eb9bafdb799d6abd6026f85aafea2e134b2d2fbda7d73f71a21ac6"
+      "sha256": "43f2ee77015909665fcc70da37354f4a90f1a321d2d3b1f84d8c42374c6dc661"
     },
     {
       "path": "distribution/manager-039.part",
       "bytes": 524288,
-      "sha256": "0f1eb6ef818e06c0e83a85541d1b890ddefd872a4cd908b6d4c6a85c9690f7a6"
+      "sha256": "48eb5fa020779a4754f2cd360057f427d53d85822e36db384e9dc55d69e3f9d8"
     },
     {
       "path": "distribution/manager-040.part",
       "bytes": 524288,
-      "sha256": "4e4c800473140c6f4615d9c9f558edf6189f847ffa61d2759721da98c42895b8"
+      "sha256": "d3995bcfdcff6d1451718621e9009a2edc464191ac111b10bd48d21e56716a41"
     },
     {
       "path": "distribution/manager-041.part",
       "bytes": 524288,
-      "sha256": "f57edf0a9ecfd7597a41bab078ae79ca338698d90e94a2cb43af6772cd05c323"
+      "sha256": "d50887fcf2cae67ce346cd65bbb0605d69c98323f8b600e2bd2a1870413d1dc1"
     },
     {
       "path": "distribution/manager-042.part",
       "bytes": 524288,
-      "sha256": "4e33e4b0c8d26a9a7cdb37680b035b36c07fae6a0505a50db8f57dddd600b201"
+      "sha256": "f4ba900f0caef6235de55bd5947b050a64bc54cad94494ccecc2b5d2c86ca107"
     },
     {
       "path": "distribution/manager-043.part",
       "bytes": 524288,
-      "sha256": "6da0dd039a962c0c3af27657c5a76d55e3c5cb8c644f636f88417a4a4ad454cf"
+      "sha256": "db827a92393cde1d59ecd4510ff96abb013b10c29469fc3e5556d1eb4acca8e0"
     },
     {
       "path": "distribution/manager-044.part",
       "bytes": 524288,
-      "sha256": "b799d4cfe8d1ca0c0fa1eb5ed76647f2398db50ceb9b732454f46b52f486ea93"
+      "sha256": "240fac24efbdac0000ab12108415433f6925052f2e73b5ca4270fee816b2d0c3"
     },
     {
       "path": "distribution/manager-045.part",
-      "bytes": 272223,
-      "sha256": "70b42ca0cf7b9d1efdf7e2d0a65720d05cc199fba162b42d86d7e33d8e55263b"
+      "bytes": 277192,
+      "sha256": "d6a51bee9a467b3e557a8637ff3562aca0a9bb20ab4905bba39cc4cd8447be7d"
     }
   ]
 }

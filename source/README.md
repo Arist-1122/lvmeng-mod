@@ -12,6 +12,14 @@ python build_runtime.py --runtime ../runtime --toolchain <portable-core-build目
 python stage_manager.py
 ```
 
+仅复现启动权限、进程归属与失败恢复检查，可运行：
+
+```text
+python test_launch_privileges.py --output <独立测试输出目录>
+```
+
+测试只启动短时测试子进程并构造不显示的界面，不启动游戏、加载器或请求管理员权限；实际管理员到普通桌面的游戏启动仍需单独实测。
+
 也可通过 `LVMENG_NATIVE_TOOLCHAIN` 指定工具链根目录。`build_runtime.py` 只使用本目录中的项目源码和 SDK 头，重新编译 actor、Bootstrap、三个托管入口，执行生产受光 inl 的 API 垫片分派测试，再刷新合同与固定文件 SHA-256。它不启动游戏或调用加载器。
 
 管理器的本机设置在 `manager/user-data/settings.json`，游戏位置由管理器写入所选 Mod 的 `runtime/game-location.json`。它们不属于不可变发布文件。`stage_manager.py` 只复制当前运行包清单内已校验的文件，不把本机游戏位置和控制日志带入 Mod。
@@ -22,10 +30,20 @@ python stage_manager.py
 
 `PortableRuntime.hpp` 从 addon 模块自身定位运行包，严格读取 GameLocation 配置。AddonInit 验证精确宿主、当前 core 实际路径、core 和合同 SHA，并保留会话/所有者/租约守卫。编译后的完整性检查和目录迁移检查不能代替实机画面验收。
 
-## v0.1.1 客户端兼容检查
+## v0.1.1 客户端兼容检查（v0.1.2 沿用）
 
 管理器、运行器、启动助手和加载器共同编译 `common/GameCompatibility.cs`。客户端位置继续由用户本机四字段 `game-location.json` 提供，不写入发布清单。`package.json` 中的 `knownProfiles` 只存相对路径与摘要；`compatibilityPolicy` 另行检查游戏身份、AMD64 PE、Unity 分支、完整渲染来源和最高头内版本的有效本地缓存清单。已知版本仍须通过全部渲染检查，普通程序更新可在渲染来源完全一致时识别为 `compatible-update`。这不能替代在线活动资源与游戏画面验收。
 
 四个入口均支持只读命令 `--check-compatibility <runtime-root> <Lumin.exe>`；它仅输出结果和退出码，不启动游戏、请求管理员或调用加载器。`common/CompatibilityCheck.cs` 提供独立控制台入口，可与同目录兼容检查源码及 `System.Web.Extensions.dll` 一起编译。`common/package_metadata.json` 保存发布所用的相对策略。
 
 完整原生重编译需要显式提供 `--toolchain` 或环境变量 `LVMENG_NATIVE_TOOLCHAIN`；脚本不再假设研究机器上的工具链绝对位置。
+
+## v0.1.2 启动权限处理
+
+公共类 `common/LaunchPrivileges.cs` 由 `managed/ModelTool.cs` 编译使用，集中处理运行器的权限判断和桌面上下文启动；管理器、助手及加载器没有新增这一编译依赖。管理器和运行器接受普通或管理员方式打开；启动助手在当前权限不足时请求提升，已具备权限时直接进入相同流程。用户取消 Windows 权限确认会结束本次启动，不自动重复请求。
+
+普通工具入口沿用正常启动流程。高权限入口在有同会话、同用户的普通桌面 Shell 时，使用其实际令牌创建一次性的包内启动桥接，再由桥接核对包、会话和所有者并启动配置的客户端或启动器。桥接失败或超时不自动回退为管理员启动，也不循环重试。不同用户或不同会话的 Shell 不用于派发，应在游戏所在桌面会话用同一用户重新打开整个管理器。手动模式仅是同用户上下文中自动桥接失败时的操作选项，不能保证绕过跨账号的所有者访问限制。桌面自身已高权限或无 Shell 时按实际环境权限处理，不更改 UAC。
+
+手动模式不自动启动游戏。助手就绪后，运行器才提示用户从自己的启动器正常进入。只读命令 `LvmengModelTool.exe --probe-launch-privileges` 可记录当前环境的权限探测结果到本机 `logs/launch_privileges_probe.json`；它不请求提升、不启动游戏，也不调用加载器。该日志只用于本机排障，不放入公开包。
+
+启动入口的权限选择与 `GameCompatibility.cs`、运行包摘要、宿主和图形资源守卫分别承担不同职责。权限路由成功不代表资源来源或完整游戏画面已验收。开发时应同步使用随源码发布的构建脚本，不要遗漏新增的公共源码。使用步骤与限制见[启动权限与排障](../docs/启动权限与排障.md)。

@@ -32,11 +32,15 @@ def build(runtime,output,toolchain):
     for filename,exe,kind in [('ModelTool.cs','LvmengModelTool.exe','winexe'),('LaunchHelper.cs','LaunchHelper.exe','winexe'),('NormalLibraryLoad.cs','NormalLibraryLoad.exe','exe')]:
         args=[csc,'/nologo','/platform:x64','/optimize+','/target:'+kind,'/out:'+str(runtime/exe),'/r:System.Web.Extensions.dll']
         if filename=='ModelTool.cs':args+=['/r:System.Windows.Forms.dll','/r:System.Drawing.dll']
-        run('managed_'+Path(filename).stem,args+[SOURCE/'managed'/filename,SOURCE/'managed/GameLocation.cs',SOURCE/'common/GameCompatibility.cs'])
+        sources=[SOURCE/'managed'/filename,SOURCE/'managed/GameLocation.cs',SOURCE/'common/GameCompatibility.cs']
+        if filename=='ModelTool.cs':sources.append(SOURCE/'common/LaunchPrivileges.cs')
+        run('managed_'+Path(filename).stem,args+sources)
     # Execute the unchanged production inl with an API shim; no GPU/core/game.
     run('surface_probe_compile',[binary/'cl.exe','/nologo','/std:c++17','/MT','/O2','/W4','/EHsc','/utf-8',*('/I'+str(x)for x in includes),SOURCE/'tests/SurfaceScopeProbe.cpp','/Fe'+str(output/'SurfaceScopeProbe.exe'),'/Fo'+str(output/'SurfaceScopeProbe.obj'),'/link',*('/LIBPATH:'+str(x)for x in libraries),'kernel32.lib'])
     dispatch=json.loads(run('surface_probe_run',[output/'SurfaceScopeProbe.exe']));assert dispatch['passed'] and dispatch['programs']==21
     dispatch['productionInlSha256']=HASH(SOURCE/'native/SurfaceLightRuntime.inl');WRITE(output/'production_dispatch.json',dispatch)
+    from test_launch_privileges import check as check_launch_privileges
+    launch_checks=check_launch_privileges(output/'launch-tests')
     (runtime/'research/bootstrap_sha256.txt').write_text(HASH(runtime/'core/PathPinBootstrap.dll')+'\n',encoding='ascii')
     package=READ(runtime/'package.json');package['contractSha256']=contract_sha
     names={x['path']for x in package['files']}
@@ -47,7 +51,7 @@ def build(runtime,output,toolchain):
     for row in package['files']:row['sha256']=HASH(runtime/row['path'])
     WRITE(runtime/'package.json',package)
     sources={p.relative_to(SOURCE).as_posix():HASH(p)for p in SOURCE.rglob('*')if p.is_file()and '__pycache__'not in p.parts and not p.resolve().is_relative_to(output.resolve())}
-    report=dict(passed=True,steps=steps,programs=21,files=len(package['files']),contractSha256=contract_sha,addonSha256=HASH(runtime/'addons/ComboActor.addon64'),sourceFiles=sources,gameLaunched=False,loaderInvoked=False,adminRequested=False)
+    report=dict(passed=True,steps=steps,programs=21,files=len(package['files']),contractSha256=contract_sha,addonSha256=HASH(runtime/'addons/ComboActor.addon64'),sourceFiles=sources,launchPolicyTestsPassed=launch_checks['passed'],actualElevatedBridgeTested=False,gameLaunched=False,loaderInvoked=False,adminRequested=False)
     WRITE(output/'build_result.json',report);return report
 
 if __name__=='__main__':

@@ -10,8 +10,9 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
-// The GUI is always unelevated. Only its explicitly clicked launch helper asks
-// Windows for elevation; the TapTap URI is opened by this original GUI process.
+// Both ordinary and elevated GUI entry points are supported. The clicked
+// helper requests elevation only when needed. Automatic game launches use the
+// same user's normal desktop context when that context exists.
 // Restoring the model changes a bounded command, never unloads an in-flight DLL.
 class ModelTool : Form {
     public class FileItem { public string path,sha256; }
@@ -20,7 +21,8 @@ class ModelTool : Form {
         public string contractSha256,releaseLabel,helperPath,loaderPath,corePath,bootstrapPath,addonPath,contractPath,configTemplatePath,previewPath,reportPath;
         public FileItem[] files,gameSamples; public GameCompatibility.Result compatibility;
     }
-    public class HelperState { public string sessionId,state,error,targetStartUtc; public int targetPid,exitCode; }
+    public class HelperState { public string sessionId,state,error,targetStartUtc; public int targetPid,exitCode,guiPid; public long guiStartTicks; }
+    public class DesktopLaunchResult {public bool passed;public string error;}
     public class AddonState {
         public int version,pid; public long commandId,replacedDraws;
         public string sessionId,targetStartUtc,contractSha256,mode,rejectReason;
@@ -123,15 +125,16 @@ class ModelTool : Form {
     void StartTrial() {
         try {
             package=ValidatePackage(true);
-            if(new System.Security.Principal.WindowsPrincipal(System.Security.Principal.WindowsIdentity.GetCurrent()).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))throw new Exception("请以普通方式打开本程序；启动助手会在需要时单独请求权限。");
             var games=Process.GetProcessesByName("Lumin");try {if(games.Length!=0)throw new Exception("游戏正在运行。请正常退出后，再点击启动。");}finally{foreach(var g in games)g.Dispose();}
             sessionId=Guid.NewGuid().ToString("N");helperStatePath=Path.Combine(Control,"launch_"+sessionId+".json");
             SetSharedEffects();
             targetPid=0;targetStartUtc=null;commandId=0;uriOpened=false;lastState=null;lastRejectReason=null;wantReplacement=true;
             string helperArgs;using(var self=Process.GetCurrentProcess())helperArgs="--arm "+sessionId+" "+self.Id+" "+self.StartTime.ToUniversalTime().Ticks;
-            var pi=new ProcessStartInfo(SafePath(package.helperPath),helperArgs){UseShellExecute=true,Verb="runas",WindowStyle=ProcessWindowStyle.Hidden};
+            bool administrator=LaunchPrivileges.IsAdministrator();
+            var pi=new ProcessStartInfo(SafePath(package.helperPath),helperArgs){UseShellExecute=true,WindowStyle=ProcessWindowStyle.Hidden};
+            if(!administrator)pi.Verb="runas";
             using(var child=Process.Start(pi)){}helperPending=true;start.Enabled=false;
-            Status("正在准备启动","请完成 Windows 权限确认。启动助手准备就绪后，将按管理器设置启动游戏。","进入莉特莉丝「绮夜寐影」服饰页查看。");Note("已请求启动准备，每次点击只尝试一次。");
+            Status("正在准备启动",administrator?"运行器已有本次所需权限，启动助手准备就绪后将按管理器设置继续。":"请完成 Windows 权限确认。启动助手准备就绪后，将按管理器设置启动游戏。","进入莉特莉丝「绮夜寐影」服饰页查看。");Note(administrator?"已沿用现有权限启动助手，每次点击只尝试一次。":"已请求启动准备，每次点击只尝试一次。");
         }catch(System.ComponentModel.Win32Exception e){Note("启动权限未确认："+e.Message);Status("本次启动已取消","没有开始新的替换会话。","可稍后重新点击启动。");}
         catch(Exception e){Note(e.Message);Status("暂未启动",e.Message,"原模型保持正常。");}
     }
@@ -163,7 +166,7 @@ class ModelTool : Form {
                 var h=ReadState<HelperState>(helperStatePath);if(h==null)return;
                 if(h.sessionId!=sessionId)throw new Exception("启动状态所属会话不匹配。");
                 if(h.state!=lastState){lastState=h.state;Note("启动状态："+h.state+(String.IsNullOrEmpty(h.error)?"":" / "+h.error));}
-                if(h.state=="armed"&&!uriOpened){GameLocation.Read(Root).Launch();uriOpened=true;Status("等待游戏启动",GameLocation.Read(Root).launchMode=="manual"?"加载助手已就绪，请现在正常启动游戏并进入莉特莉丝角色页。":"已按所选方式请求正常启动。进入莉特莉丝角色页后会检查适配条件。","启动等待最长3分钟，不会自动重试。");}
+                if(h.state=="armed"&&!uriOpened){uriOpened=true;LaunchConfiguredGame();Status("等待游戏启动",GameLocation.Read(Root).launchMode=="manual"?"加载助手已就绪，请现在正常启动游戏并进入莉特莉丝角色页。":"已按所选方式请求启动。进入莉特莉丝角色页后会检查适配条件。","启动等待最长3分钟，不会自动重试。");}
                 if(h.state=="loaded"&&targetPid==0){if(h.targetPid<1||String.IsNullOrEmpty(h.targetStartUtc))throw new Exception("启动记录缺少目标进程。");targetPid=h.targetPid;targetStartUtc=h.targetStartUtc;helperPending=false;WriteCommand(wantReplacement?"replace":"original");Status("等待服装贴图","已加载服装换色组件。请选择莉特莉丝「绮夜寐影」。","原配色保持至匹配到贴图。");}
                 if(h.state=="failed"){helperPending=false;wantReplacement=false;start.Enabled=package.runtimeReady;Status("本次启动已停止",h.error??"详见验证记录。","不会自动重新加载或重启游戏。");}
             }
@@ -192,12 +195,41 @@ class ModelTool : Form {
                     }
                 }
             }
-        }catch(Exception e){wantReplacement=false;CancelSession();try{WriteCommand("original");}catch{}sessionId=null;helperPending=false;Status("已停止替换请求",e.Message,"后续换色授权会到期。正常退出游戏后恢复原配色。");Note(e.Message);}
+        }catch(Exception e){wantReplacement=false;CancelSession();try{WriteCommand("original");}catch{}sessionId=null;helperPending=false;start.Enabled=package!=null&&package.runtimeReady;Status("已停止替换请求",e.Message,"后续换色授权会到期。正常退出游戏后恢复原配色。");Note(e.Message);}
+    }
+    void LaunchConfiguredGame() {
+        var location=GameLocation.Read(Root);
+        if(location.launchMode=="manual"){Note("手动启动模式：本程序没有自动启动游戏。");return;}
+        var privileges=LaunchPrivileges.Inspect();Note(privileges.message);
+        if(privileges.route!="desktop-user"){location.Launch();return;}
+        string arguments;using(var self=Process.GetCurrentProcess())arguments="--launch-desktop-game "+sessionId+" "+self.Id+" "+self.StartTime.ToUniversalTime().Ticks;
+        int code=LaunchPrivileges.RunDesktopBridge(SafePath("LvmengModelTool.exe"),arguments,Root);
+        var result=ReadState<DesktopLaunchResult>(Path.Combine(Control,"desktop_result_"+sessionId+".json"));
+        if(code!=0||result==null||!result.passed)throw new Exception(result!=null&&!String.IsNullOrEmpty(result.error)?result.error:"普通桌面启动请求未成功确认；未改用管理员权限重试，请检查状态或选择手动启动。");
+    }
+    static int DesktopLaunch(string[] args) {
+        string session=args.Length==4?args[1]:"";Guid parsed;int ownerPid;long ownerTicks;
+        if(args.Length!=4||args[0]!="--launch-desktop-game"||session.Length!=32||!Guid.TryParseExact(session,"N",out parsed)||!Int32.TryParse(args[2],out ownerPid)||ownerPid<=0||!Int64.TryParse(args[3],out ownerTicks)||ownerTicks<=0)return 2;
+        string resultPath=Path.Combine(Control,"desktop_result_"+session+".json");
+        try {
+            if(LaunchPrivileges.IsAdministrator())throw new Exception("桌面桥接未取得普通权限；没有继续管理员游戏启动，请选择手动模式。");
+            if(!LaunchPrivileges.MatchesProcessIdentity(ownerPid,ownerTicks,SafePath("LvmengModelTool.exe")))throw new Exception("原运行器会话已结束，未启动游戏。");
+            if(File.Exists(Path.Combine(Control,"cancel_"+session+".json")))throw new Exception("本次启动已取消。");
+            var state=ReadState<HelperState>(Path.Combine(Control,"launch_"+session+".json"));
+            if(state==null||state.sessionId!=session||state.state!="armed"||state.guiPid!=ownerPid||state.guiStartTicks!=ownerTicks)throw new Exception("启动助手尚未就绪或会话不匹配，未启动游戏。");
+            ValidatePackage(true);
+            using(var claim=new FileStream(Path.Combine(Control,"desktop_launch_"+session+".claim"),FileMode.CreateNew,FileAccess.Write,FileShare.Read)){}
+            var location=GameLocation.Read(Root);if(location.launchMode=="manual")throw new Exception("启动方式已改为手动，请自行正常打开游戏。");
+            if(!LaunchPrivileges.MatchesProcessIdentity(ownerPid,ownerTicks,SafePath("LvmengModelTool.exe"))||File.Exists(Path.Combine(Control,"cancel_"+session+".json")))throw new Exception("本次启动已取消。");
+            location.Launch();Atomic(resultPath,new DesktopLaunchResult{passed=true});return 0;
+        }catch(Exception error){try{Atomic(resultPath,new DesktopLaunchResult{passed=false,error=error.Message});}catch{}return 2;}
     }
     void OpenLocal(string relative){try{if(String.IsNullOrEmpty(relative))throw new Exception("此构建尚未生成该页面。");Process.Start(new ProcessStartInfo(SafePath(relative)){UseShellExecute=true});}catch(Exception e){Note(e.Message);}}
     [STAThread]static int Main(string[] args) {
         if(args.Length==3&&args[0]=="--check-compatibility")return GameCompatibility.RunReadOnlyCli(args[1],args[2]);
         Directory.CreateDirectory(Logs);
+        if(args.Length>0&&args[0]=="--launch-desktop-game")return DesktopLaunch(args);
+        if(args.Length==1&&args[0]=="--probe-launch-privileges"){try{Atomic(Path.Combine(Logs,"launch_privileges_probe.json"),new{passed=true,gameLaunched=false,adminRequested=false,privileges=LaunchPrivileges.Inspect()});return 0;}catch(Exception e){Atomic(Path.Combine(Logs,"launch_privileges_probe.json"),new{passed=false,gameLaunched=false,adminRequested=false,error=e.Message});return 2;}}
         if(args.Length==1&&(args[0]=="--check-only"||args[0]=="--check-runtime-only")) {try{var p=ValidatePackage(args[0]=="--check-runtime-only");Atomic(Path.Combine(Logs,"check_only.json"),new{passed=true,runtimeReady=p.runtimeReady,liveGameVerified=p.liveGameVerified,gameLaunched=false,adminRequested=false});return 0;}catch(Exception e){Atomic(Path.Combine(Logs,"check_only.json"),new{passed=false,error=e.Message,gameLaunched=false,adminRequested=false});return 2;}}
         bool created;using(var single=new System.Threading.Mutex(true,@"Local\LvmengModelTool_v1",out created)){
             if(!created){MessageBox.Show("模型替换程序已经打开，请使用现有窗口。","莉特莉丝 · 红黑收尾修正版");return 2;}

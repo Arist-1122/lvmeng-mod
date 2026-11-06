@@ -151,8 +151,8 @@ public sealed class CharacterDialog : Form {
 public sealed class ManagerForm : Form {
     Store store; ListView mods; TextBox game, details; ComboBox launch; Label count; List<InstalledMod> installed; Dictionary<string, Process> runners = new Dictionary<string, Process>();
     public ManagerForm(Store s) {
-        store = s; Text = "绿梦 Mod 管理器 · v0.1.1 预览版"; Font = new Font("Microsoft YaHei UI", 10); ClientSize = new Size(1010, 680); MinimumSize = new Size(1026, 719); StartPosition = FormStartPosition.CenterScreen; BackColor = Color.FromArgb(242, 244, 248);
-        var title = new Label { Text = "绿梦 Mod 管理器 · v0.1.1 预览版", Location = new Point(25, 20), AutoSize = true, Font = new Font(Font.FontFamily, 22, FontStyle.Bold) }; Controls.Add(title);
+        store = s; Text = "绿梦 Mod 管理器 · v0.1.2 预览版"; Font = new Font("Microsoft YaHei UI", 10); ClientSize = new Size(1010, 680); MinimumSize = new Size(1026, 719); StartPosition = FormStartPosition.CenterScreen; BackColor = Color.FromArgb(242, 244, 248);
+        var title = new Label { Text = "绿梦 Mod 管理器 · v0.1.2 预览版", Location = new Point(25, 20), AutoSize = true, Font = new Font(Font.FontFamily, 22, FontStyle.Bold) }; Controls.Add(title);
         Controls.Add(new Label { Text = "角色与皮肤独立管理 · 每次启动一个已适配的 Mod", AutoSize = true, Location = new Point(28, 65), ForeColor = Color.DimGray });
         Controls.Add(new Label { Text = "游戏 Lumin.exe", AutoSize = true, Location = new Point(28, 111) });
         game = new TextBox { Text = s.settings.gameExecutable, Location = new Point(155, 107), Width = 685 }; Controls.Add(game);
