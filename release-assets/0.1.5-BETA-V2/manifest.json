@@ -1,0 +1,211 @@
+{
+  "base": {
+    "bytes": 259128581,
+    "sha256": "2dfb309bc9a88aa61043fc7ff17a09819a560229bb06dc941acbd925984658eb"
+  },
+  "manager": {
+    "filename": "lvmeng-mod-manager-0.1.5-BETA-V2.zip",
+    "bytes": 259134138,
+    "sha256": "ab7299eeb11435339de53e9cb8ee2612549e53436dc0636a172847681d3f27ae",
+    "ranges": [
+      [
+        "base",
+        0,
+        1815
+      ],
+      [
+        "data",
+        0,
+        29685
+      ],
+      [
+        "base",
+        31489,
+        64109
+      ],
+      [
+        "data",
+        29685,
+        124865
+      ],
+      [
+        "base",
+        218782,
+        2309
+      ],
+      [
+        "data",
+        154550,
+        2410116
+      ],
+      [
+        "base",
+        2630650,
+        752
+      ],
+      [
+        "data",
+        2564666,
+        849
+      ],
+      [
+        "base",
+        2632254,
+        776
+      ],
+      [
+        "data",
+        2565515,
+        192967
+      ],
+      [
+        "base",
+        2825617,
+        22652281
+      ],
+      [
+        "data",
+        2758482,
+        1395
+      ],
+      [
+        "base",
+        25479292,
+        908
+      ],
+      [
+        "data",
+        2759877,
+        193858
+      ],
+      [
+        "base",
+        25673346,
+        17551613
+      ],
+      [
+        "data",
+        2953735,
+        1487
+      ],
+      [
+        "base",
+        43226443,
+        1373
+      ],
+      [
+        "data",
+        2955222,
+        190600
+      ],
+      [
+        "base",
+        43418333,
+        7820364
+      ],
+      [
+        "data",
+        3145822,
+        1388
+      ],
+      [
+        "base",
+        51240087,
+        1519
+      ],
+      [
+        "data",
+        3147210,
+        198070
+      ],
+      [
+        "base",
+        51437764,
+        30800834
+      ],
+      [
+        "data",
+        3345280,
+        1380
+      ],
+      [
+        "base",
+        82239982,
+        387
+      ],
+      [
+        "data",
+        3346660,
+        126382
+      ],
+      [
+        "base",
+        82366753,
+        32324564
+      ],
+      [
+        "data",
+        3473042,
+        150381
+      ],
+      [
+        "base",
+        114841703,
+        11647843
+      ],
+      [
+        "data",
+        3623423,
+        7651
+      ],
+      [
+        "base",
+        126497194,
+        132379761
+      ],
+      [
+        "data",
+        3631074,
+        251856
+      ]
+    ]
+  },
+  "source": {
+    "filename": "lvmeng-mod-source-0.1.5-BETA-V2.zip",
+    "bytes": 416361,
+    "sha256": "25a9dbbc8b12c2fe42700f168cbd4ea85a86c8693e0821fea7147acd1855f7c2",
+    "offset": 3882930
+  },
+  "parts": [
+    {
+      "path": "parts/data-000.part",
+      "bytes": 1048576,
+      "sha256": "b47b786f6c1fca4531ff3f911d4bb87b1f07974c444c36232fd2f73748950218",
+      "gitBlobSha1": "e61f7f33880ee1f78d6e3cbeabbd06579758af5e"
+    },
+    {
+      "path": "parts/data-001.part",
+      "bytes": 1048576,
+      "sha256": "2cdc1cd4faa40c7a1953f489a50f943a0f353eb83f19fe3e00423d25998ecead",
+      "gitBlobSha1": "c03c965e813148308ef9fd5ea0941e9b40dae062"
+    },
+    {
+      "path": "parts/data-002.part",
+      "bytes": 1048576,
+      "sha256": "880eec311ae1b2b64a46f7a8f7aa36e5ca653cc89da3101622bc09843ff76aa9",
+      "gitBlobSha1": "a2e894f9d4e163e34965fd81d277e07b336ab1f2"
+    },
+    {
+      "path": "parts/data-003.part",
+      "bytes": 1048576,
+      "sha256": "fbef2afc725a0a313000c0e1233424fd7604d58afedcab8ff5e001bd9e15a8be",
+      "gitBlobSha1": "78eba5a6070479bbc0ea57454e1348102663c7df"
+    },
+    {
+      "path": "parts/data-004.part",
+      "bytes": 104987,
+      "sha256": "449db97b12e5ba63e5052bd3173fd0779b46f765f1481afe20bd93c438be01aa",
+      "gitBlobSha1": "d3a6cd72df4c7cd30346f2ccc0c6e6c642dd3fbb"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+name: Publish 0.1.5-BETA-V2
+
+on:
+  push:
+    branches: [publish/0.1.5-BETA-V2]
+    paths:
+      - release-assets/0.1.5-BETA-V2/**
+      - .github/workflows/publish-015-beta-v2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-0.1.5-BETA-V2
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Assemble and verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=0.1.5-BETA-V2
+          curl --fail --silent --show-error --location --retry 3 \
+            --output "$RUNNER_TEMP/previous-beta.zip" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/v0.1.5-beta/lvmeng-mod-manager-v0.1.5-beta.zip"
+          python3 "release-assets/$tag/assemble.py" "$RUNNER_TEMP/previous-beta.zip" "$RUNNER_TEMP/$tag"
+      - name: Publish the verified prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=0.1.5-BETA-V2
+          out="$RUNNER_TEMP/$tag"
+          archive="lvmeng-mod-manager-$tag.zip"
+          target="$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$GITHUB_SHA" --jq '.parents[0].sha')"
+          [[ "$target" =~ ^[0-9a-f]{40}$ ]]
+          test "$target" != "$GITHUB_SHA"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+             gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "Release or tag already exists."
+            exit 1
+          fi
+          gh release create "$tag" "$out/$archive" "$out/$archive.sha256" "$out/lvmeng-mod-source-$tag.zip" \
+            --repo "$GITHUB_REPOSITORY" --target "$target" --title '0.1.5-BETA-V2（紧急优化帧数）' \
+            --prerelease --notes-file "release-assets/$tag/notes.md"
