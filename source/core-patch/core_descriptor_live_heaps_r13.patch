@@ -1,0 +1,98 @@
+diff --git a/source/d3d12/d3d12_descriptor_metadata.hpp b/source/d3d12/d3d12_descriptor_metadata.hpp
+--- a/source/d3d12/d3d12_descriptor_metadata.hpp
++++ b/source/d3d12/d3d12_descriptor_metadata.hpp
+@@ -16,7 +16,8 @@
+     std::unique_ptr<node[]> _nodes; size_t _length=0,_limit=0,_count=0;
+     static uint64_t mix(uint64_t x) noexcept {x^=x>>30;x*=0xbf58476d1ce4e5b9ull;x^=x>>27;x*=0x94d049bb133111ebull;return x^(x>>31);}
+ public:
+-    bool initialize(size_t limit) noexcept {if(!limit||limit>262144)return false;_length=2;while(_length<limit*2)_length<<=1;_limit=limit;_nodes.reset(new(std::nothrow)node[_length]);return bool(_nodes);}
++    static constexpr size_t maximum_entries = 262144;
++    bool initialize(size_t limit) noexcept {if(!limit||limit>maximum_entries)return false;_length=2;while(_length<limit*2)_length<<=1;_limit=limit;_nodes.reset(new(std::nothrow)node[_length]);return bool(_nodes);}
+     T *find(uint64_t key) noexcept
+     {
+         if(!_nodes)return nullptr;
+@@ -69,7 +70,12 @@
+     };
+     descriptor_metadata_store() noexcept:descriptor_metadata_store(limits{}){}
+     explicit descriptor_metadata_store(limits caps) noexcept:_limits(caps)
+-    {_disabled=!caps.copy_elements||caps.copy_elements>4096||!caps.transactions||caps.transactions>16||!_resources.initialize(caps.resources)||!_heaps.initialize(caps.heaps)||!_slots.initialize(caps.slots);}
++    {
++        if (caps.heaps && caps.heaps <= decltype(_heaps)::maximum_entries)
++            _live_heaps.reset(new(std::nothrow) const heap_record *[caps.heaps]);
++        _disabled=!_live_heaps||!caps.copy_elements||caps.copy_elements>4096||!caps.transactions||caps.transactions>16||
++            !_resources.initialize(caps.resources)||!_heaps.initialize(caps.heaps)||!_slots.initialize(caps.slots);
++    }
+     uint64_t add_resource(uint64_t key,uint64_t size) noexcept
+     {std::lock_guard<std::mutex> lock(_mutex);if(_disabled||!key)return 0;const auto gen=advance();if(!gen)return 0;if(!_resources.put(key,{gen,size}))return disable();return gen;}
+     void remove_resource(uint64_t key) noexcept
+@@ -81,11 +87,36 @@
+     }
+     uint64_t add_heap(uint64_t cpu,uint64_t gpu,uint64_t proxy_cpu,uint32_t count,uint32_t increment,uint32_t type,bool queryable=true) noexcept
+     {
+-        std::lock_guard<std::mutex> lock(_mutex);if(_disabled||!cpu||!count||!increment||uint64_t(count)>(UINT64_MAX-cpu)/increment||(gpu&&uint64_t(count)>(UINT64_MAX-gpu)/increment))return 0;
+-        const auto gen=advance();if(!gen)return 0;if(!_heaps.put(gen,{gen,cpu,gpu,proxy_cpu,count,increment,type,queryable}))return disable();return gen;
++        std::lock_guard<std::mutex> lock(_mutex);
++        if (_disabled || !cpu || !count || !increment || uint64_t(count)>(UINT64_MAX-cpu)/increment ||
++            (gpu && uint64_t(count)>(UINT64_MAX-gpu)/increment)) return 0;
++        const auto gen=advance();
++        if (!gen) return 0;
++        if (_live_heap_count>=_limits.heaps || !_heaps.put(gen,{gen,cpu,gpu,proxy_cpu,count,increment,type,queryable}))
++            return disable();
++        // The bounded map never reallocates. Erase removes its pointer first.
++        const auto *record=_heaps.find(gen);
++        if (!record) return disable();
++        _live_heaps[_live_heap_count++]=record;
++        return gen;
+     }
+     void remove_heap(uint64_t generation) noexcept
+-    {std::lock_guard<std::mutex> lock(_mutex);if(!_heaps.erase(generation))return;advance();_slots.erase_if([&](uint64_t,const slot_record &s){return s.heap_generation==generation;});}
++    {
++        std::lock_guard<std::mutex> lock(_mutex);
++        const auto *record=_heaps.find(generation);
++        if (!record) return;
++        size_t index=0;
++        while (index<_live_heap_count && _live_heaps[index]!=record) ++index;
++        if (index==_live_heap_count) {
++            disable();
++            return;
++        }
++        _live_heaps[index]=_live_heaps[--_live_heap_count];
++        _live_heaps[_live_heap_count]=nullptr;
++        _heaps.erase(generation);
++        advance();
++        _slots.erase_if([&](uint64_t,const slot_record &s){return s.heap_generation==generation;});
++    }
+     void remove_internal_view(uint64_t cpu) noexcept {std::lock_guard<std::mutex> lock(_mutex);if(_slots.erase(cpu))advance();}
+     transaction begin_write(uint64_t cpu,rs_descriptor_metadata_v1 value,bool internal=false) noexcept
+     {
+@@ -151,7 +182,7 @@
+         if(!out||out->size!=sizeof(*out)||out->version!=1)return false;std::lock_guard<std::mutex> lock(_mutex);rs_descriptor_metadata_v1 r={sizeof(*out),1};r.mutation_epoch=_epoch;
+         if(_disabled){r.status=rs_descriptor_capacity;*out=r;return true;}if(!table||array_offset){r.status=rs_descriptor_invalid;*out=r;return true;}
+         const heap_record *found=nullptr;uint64_t slot=0;bool ambiguous=false;const bool cpu=(table&0xF000000000000000ull)==0xF000000000000000ull;const uint64_t address=cpu?(table^0xF000000000000000ull):table;
+-        _heaps.each([&](uint64_t,const heap_record &h){const uint64_t base=cpu?h.proxy_cpu:h.gpu;if(!base||address<base)return;const auto delta=address-base;if(delta%h.increment||delta/h.increment>=h.count)return;if(found){ambiguous=true;return;}found=&h;slot=delta/h.increment;});
++        each_live_heap([&](const heap_record &h){const uint64_t base=cpu?h.proxy_cpu:h.gpu;if(!base||address<base)return;const auto delta=address-base;if(delta%h.increment||delta/h.increment>=h.count)return;if(found){ambiguous=true;return;}found=&h;slot=delta/h.increment;});
+         if(ambiguous){*out=r;return true;}if(!found){r.status=rs_descriptor_dead;*out=r;return true;}if(binding>=found->count-slot){r.status=rs_descriptor_invalid;*out=r;return true;}slot+=binding;
+         // Core transient GPU heaps have uninstrumented allocator/command-list
+         // paths. They are never evidence sources in this prototype.
+@@ -206,13 +237,20 @@
+         if (source->pending) return source->token==token;
+         return source->value.slot_epoch==dst.source_epoch && valid(*source);
+     }
++    template<typename F> void each_live_heap(F &&f) const noexcept
++    {
++        for (size_t i=0;i<_live_heap_count;++i) f(*_live_heaps[i]);
++    }
+     const heap_record *find_cpu(uint64_t cpu) const noexcept
+-    {const heap_record *found=nullptr;bool ambiguous=false;_heaps.each([&](uint64_t,const heap_record &h){if(cpu>=h.cpu&&(cpu-h.cpu)%h.increment==0&&(cpu-h.cpu)/h.increment<h.count){if(found)ambiguous=true;else found=&h;}});return ambiguous?nullptr:found;}
++    {const heap_record *found=nullptr;bool ambiguous=false;each_live_heap([&](const heap_record &h){if(cpu>=h.cpu&&(cpu-h.cpu)%h.increment==0&&(cpu-h.cpu)/h.increment<h.count){if(found)ambiguous=true;else found=&h;}});return ambiguous?nullptr:found;}
+     bool valid_resource(const slot_record &s) const noexcept {if(!s.value.resource_identity)return true;const auto r=_resources.find(s.value.resource_identity);return r&&r->generation==s.value.resource_generation;}
+     bool valid(const slot_record &s) const noexcept {const auto h=s.heap_generation?_heaps.find(s.heap_generation):nullptr;return !s.pending&&(!s.heap_generation||(h&&h->queryable))&&valid_resource(s);}
+     uint64_t advance() noexcept {if(_epoch==UINT64_MAX)return disable();return ++_epoch;}
+     uint64_t disable() noexcept {_disabled=true;return 0;}
+     limits _limits;mutable std::mutex _mutex;uint64_t _epoch=0;size_t _active=0;bool _disabled=false;
++    // Descriptor handles are resolved against every live range to detect ambiguity.
++    std::unique_ptr<const heap_record *[]> _live_heaps;
++    size_t _live_heap_count=0;
+     metadata_bounded_map<resource_record> _resources;metadata_bounded_map<heap_record> _heaps;metadata_bounded_map<slot_record> _slots;
+ };
+ }

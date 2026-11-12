@@ -67,9 +67,11 @@
 感谢所有尊重原创、支持 Mod 创作以及愿意分享技术经验的人。
 
 <!-- reviewed-v0.1.0 -->
-## 可用工具与当前实例 · v0.1.5-beta
+## 可用工具与当前实例 · 0.1.5-BETA-V2（紧急优化帧数）
 
-[下载管理器与六套 Mod](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.5-beta/lvmeng-mod-manager-v0.1.5-beta.zip) · [发布说明](https://github.com/Arist-1122/lvmeng-mod/releases/tag/v0.1.5-beta) · [源码包](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.5-beta/lvmeng-mod-source-v0.1.5-beta.zip) · [SHA-256 校验文件](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.5-beta/lvmeng-mod-manager-v0.1.5-beta.zip.sha256)
+[下载管理器与六套 Mod](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.5-BETA-V2/lvmeng-mod-manager-0.1.5-BETA-V2.zip) · [发布说明](https://github.com/Arist-1122/lvmeng-mod/releases/tag/0.1.5-BETA-V2) · [源码包](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.5-BETA-V2/lvmeng-mod-source-0.1.5-BETA-V2.zip) · [SHA-256 校验文件](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.5-BETA-V2/lvmeng-mod-manager-0.1.5-BETA-V2.zip.sha256)
+
+修复了 D3D12 描述符跟踪开销。本机实测约 30 FPS 恢复到 100–110 FPS。
 
 这一版在同一个管理器窗口中提供莉特莉丝「绮夜寐影」的六套外观。游戏运行期间可以换装、切回原模型，再继续换装。
 
