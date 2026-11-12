@@ -1,0 +1,35 @@
+name: Publish 0.1.2-D preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - release-assets/0.1.2-D/**
+      - .github/workflows/publish-012d.yml
+permissions:
+  contents: write
+concurrency:
+  group: publish-012d
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Verify archive and extract the release preview
+        run: python3 release-assets/0.1.2-D/assemble.py "$RUNNER_TEMP"
+      - name: Publish the reviewed preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v0.1.2-D
+          archive=lvmeng-mod-manager-v0.1.2-D.zip
+          preview=starsea-0.1.2-D-preview.png
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; nothing overwritten."
+            exit 1
+          fi
+          gh release create "$tag" "$RUNNER_TEMP/$archive" "$RUNNER_TEMP/$archive.sha256" "$RUNNER_TEMP/$preview" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title 'v0.1.2-D 绿梦 Mod 管理器预览版' --notes-file release-assets/0.1.2-D/notes.md
