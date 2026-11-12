@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "tag": "v0.1.5-beta",
+  "targetCommit": "b57bf3135bbf6e2849246b2eb4c84db69ebcc365",
+  "runtime": {
+    "fileName": "lvmeng-mod-manager-v0.1.5-beta.zip",
+    "bytes": 259128581,
+    "sha256": "2dfb309bc9a88aa61043fc7ff17a09819a560229bb06dc941acbd925984658eb",
+    "parts": [
+      {
+        "path": "parts/runtime-000.part",
+        "bytes": 6291456,
+        "sha256": "15197ffd82d2a98cbd577d3102a85a981e336a9af2a0f02912622bd8a02f826d"
+      },
+      {
+        "path": "parts/runtime-001.part",
+        "bytes": 6291456,
+        "sha256": "a5f73ffd7617aba5b42251348eaee918756470f46a4e560ed986a6d7de5fd15e"
+      },
+      {
+        "path": "parts/runtime-002.part",
+        "bytes": 6291456,
+        "sha256": "2d5133192ed3ae18bb2f1298c836387bfb4cb23dfa4f25a5dd246e482de77c45"
+      },
+      {
+        "path": "parts/runtime-003.part",
+        "bytes": 6291456,
+        "sha256": "b0f429e7f91763f2b82f43043dd60f2da7041bcf5ffe09bb1e425adbe6388038"
+      },
+      {
+        "path": "parts/runtime-004.part",
+        "bytes": 6291456,
+        "sha256": "af9f06736f128064ca12cb2eaf9714ba494ff2be0fd23d9d19722ff616eb3353"
+      },
+      {
+        "path": "parts/runtime-005.part",
+        "bytes": 6291456,
+        "sha256": "9b2331fb9b24bc5560d6931ade2ae22e4d96485308be2f607077add924e59d50"
+      },
+      {
+        "path": "parts/runtime-006.part",
+        "bytes": 6291456,
+        "sha256": "f7c7b8d3d43c61f05876385b10da2e226c6178903ec90e8f273e27e9c56d75ed"
+      },
+      {
+        "path": "parts/runtime-007.part",
+        "bytes": 6291456,
+        "sha256": "a27102677d5940147af368884811ca8a4b1e48334ce9b0346d18898ff67d674f"
+      },
+      {
+        "path": "parts/runtime-008.part",
+        "bytes": 6291456,
+        "sha256": "4b29fe783faf8427863198e91318c8f85ff866ef6fb747b70bda090bedfb8ee3"
+      },
+      {
+        "path": "parts/runtime-009.part",
+        "bytes": 6291456,
+        "sha256": "64368384b1b3c484961620ae475dff2b59cad36dcb286cd473efa3bdc7af1763"
+      },
+      {
+        "path": "parts/runtime-010.part",
+        "bytes": 6291456,
+        "sha256": "2782bdec25842619b545a2375825b7521e6afd451868099d67c0ca817b39dc3d"
+      },
+      {
+        "path": "parts/runtime-011.part",
+        "bytes": 6291456,
+        "sha256": "b02c7c9274f4f84094d22525cecacb14580f3f18b82409aebd091ca4a0c36a35"
+      },
+      {
+        "path": "parts/runtime-012.part",
+        "bytes": 6291456,
+        "sha256": "75d4e99cd1f253e6416c9c22142aa783f45d16c31b8d6f37515e2f03d8208fad"
+      },
+      {
+        "path": "parts/runtime-013.part",
+        "bytes": 6291456,
+        "sha256": "ce368e8079573c80047b8507fd6a89cce63e792c2e005bd229e3836d058af58a"
+      },
+      {
+        "path": "parts/runtime-014.part",
+        "bytes": 6291456,
+        "sha256": "e3fca1ec6b7c928b5b713e29c600c2aac2f145c0269edfdce2acd556ed0299f4"
+      },
+      {
+        "path": "parts/runtime-015.part",
+        "bytes": 6291456,
+        "sha256": "44207c0d3d667ad4aaf8a739dad66160c0684165c2385191a5ac6fb4a51d0c65"
+      },
+      {
+        "path": "parts/runtime-016.part",
+        "bytes": 6291456,
+        "sha256": "cbb859e79dc87c509a7d16b451358da7d810ead0fb3e96d259d90c8ccb390b7e"
+      },
+      {
+        "path": "parts/runtime-017.part",
+        "bytes": 6291456,
+        "sha256": "65487cca248bfc68f64aa11ebfb1dec4213ff969f10eb8a4adc2e3c1a184edf6"
+      },
+      {
+        "path": "parts/runtime-018.part",
+        "bytes": 6291456,
+        "sha256": "5cd36265ec5b4cd0090b0101703ad12244895b3c093bfd1f8229857539bc28e7"
+      },
+      {
+        "path": "parts/runtime-019.part",
+        "bytes": 6291456,
+        "sha256": "5d972a479d1bd07bb2d11d3756180c3e7533bd68eb82d7775443110d05ae836f"
+      },
+      {
+        "path": "parts/runtime-020.part",
+        "bytes": 6291456,
+        "sha256": "443176153c537262458486f6fda707d3279348a77491b0d3b87b3cb8833a90b3"
+      },
+      {
+        "path": "parts/runtime-021.part",
+        "bytes": 6291456,
+        "sha256": "4319c8691b5faaf0e16337c6009909bf0f7da33d3a35f4a704908be7caa6bf98"
+      },
+      {
+        "path": "parts/runtime-022.part",
+        "bytes": 6291456,
+        "sha256": "9c92519ea6623369c0e91db862918bb0f7b6f1a3c97241f4b71fa05470dda037"
+      },
+      {
+        "path": "parts/runtime-023.part",
+        "bytes": 6291456,
+        "sha256": "d2adae840c8e3bc2c256ac0a37b098acba206422f1ba8af92109c845cad5bb25"
+      },
+      {
+        "path": "parts/runtime-024.part",
+        "bytes": 6291456,
+        "sha256": "5927e3451f098d855eed50681bd49c89d086a5cbd3f05091a1d90583607e284a"
+      },
+      {
+        "path": "parts/runtime-025.part",
+        "bytes": 6291456,
+        "sha256": "718416d1efcda6dff60ae51fb713835c69263b23d477c61211329f220d767b44"
+      },
+      {
+        "path": "parts/runtime-026.part",
+        "bytes": 6291456,
+        "sha256": "10a85e9bc6f1228b9d359029e577fd128d29b53702222fad46fe16b5f362434c"
+      },
+      {
+        "path": "parts/runtime-027.part",
+        "bytes": 6291456,
+        "sha256": "96f203a1385bdb629fd22b57830b69ce25e29b35fac5db9bf866dd128c0f633b"
+      },
+      {
+        "path": "parts/runtime-028.part",
+        "bytes": 6291456,
+        "sha256": "f2bf359900ef6e7dcc9f6d13ac5dcd66eade4a57a95b0d48add73901be9737e8"
+      },
+      {
+        "path": "parts/runtime-029.part",
+        "bytes": 6291456,
+        "sha256": "52619313f81a6587707e8fd7ef224acc95bd712c0058db943a4c5934dd8be2c2"
+      },
+      {
+        "path": "parts/runtime-030.part",
+        "bytes": 6291456,
+        "sha256": "19e89d50734782a67ced017f39df6b21f0511e2b9c6896552965442e885732ce"
+      },
+      {
+        "path": "parts/runtime-031.part",
+        "bytes": 6291456,
+        "sha256": "edf7aae31f4b810cb2ac098c1543972cd0a41a4f4f9f5095cb98ff7c58ff310a"
+      },
+      {
+        "path": "parts/runtime-032.part",
+        "bytes": 6291456,
+        "sha256": "c0741343ddf773f319869fe97bef71d6c28b95de5fea00c9f91a1f8f48da4e6b"
+      },
+      {
+        "path": "parts/runtime-033.part",
+        "bytes": 6291456,
+        "sha256": "10d27d8f69bec69b63e04201dde60b9eb15a10f890a0aba4bac7f46c77115071"
+      },
+      {
+        "path": "parts/runtime-034.part",
+        "bytes": 6291456,
+        "sha256": "e8982e777ffe60ed0aace15b46ed9c0325cbe761013c687b83c21b54c5b2f380"
+      },
+      {
+        "path": "parts/runtime-035.part",
+        "bytes": 6291456,
+        "sha256": "9974f34bed725826895f3276c206887d8766a9bf16d8ebd5377523bcac5b6c3c"
+      },
+      {
+        "path": "parts/runtime-036.part",
+        "bytes": 6291456,
+        "sha256": "e940f0ff8398bcac916ddf789fbdfadd8a8feeb38069ae6326fa287024629add"
+      },
+      {
+        "path": "parts/runtime-037.part",
+        "bytes": 6291456,
+        "sha256": "15f216a62539f83485c4f67ae277c09d4a68c9cd40b444d2897c133b4433a9a9"
+      },
+      {
+        "path": "parts/runtime-038.part",
+        "bytes": 6291456,
+        "sha256": "68976e6c93246400167e2979da232c963609869703df2adab94bd37baacaf7ba"
+      },
+      {
+        "path": "parts/runtime-039.part",
+        "bytes": 6291456,
+        "sha256": "710fc8888a8be725f70df87b724b1829a8297ea1fbec6eb80d896fa41c8fd493"
+      },
+      {
+        "path": "parts/runtime-040.part",
+        "bytes": 6291456,
+        "sha256": "ba12905f9d85c62d5b737f0851a87f0c5bdb4816d8d85db62d616a7e2e008cfc"
+      },
+      {
+        "path": "parts/runtime-041.part",
+        "bytes": 1178885,
+        "sha256": "9c19a6e5acde6da9e278d5fe69efdfff856b4b41ecf8bd841aee07e49fade631"
+      }
+    ]
+  },
+  "sources": {
+    "fileName": "lvmeng-mod-source-v0.1.5-beta.zip",
+    "bytes": 404550,
+    "sha256": "c6291bb412437b70871896a85ddccf5f02d83e9d0dbb25fc371ea4a5679edba0",
+    "parts": [
+      {
+        "path": "parts/sources-000.part",
+        "bytes": 404550,
+        "sha256": "c6291bb412437b70871896a85ddccf5f02d83e9d0dbb25fc371ea4a5679edba0"
+      }
+    ]
+  }
+}

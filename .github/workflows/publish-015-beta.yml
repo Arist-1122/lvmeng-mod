@@ -1,0 +1,59 @@
+name: Publish v0.1.5-beta
+
+on:
+  push:
+    branches: [publish/v0.1.5-beta]
+    paths:
+      - release-assets/v0.1.5-beta/**
+      - .github/workflows/publish-015-beta.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-v0.1.5-beta
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verify and assemble release assets
+        id: assemble
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-assets/v0.1.5-beta/assemble.py "$RUNNER_TEMP/v0.1.5-beta" > "$RUNNER_TEMP/v0.1.5-beta.json"
+          cat "$RUNNER_TEMP/v0.1.5-beta.json"
+          target="$(jq -er .targetCommit "$RUNNER_TEMP/v0.1.5-beta.json")"
+          test "$target" != "$GITHUB_SHA"
+          git fetch --no-tags --depth=1 origin "$target"
+          test "$(git cat-file -t "$target")" = commit
+          test -z "$(git ls-tree --name-only "$target" -- release-assets/v0.1.5-beta/parts)"
+          printf 'target=%s\n' "$target" >> "$GITHUB_OUTPUT"
+      - name: Publish the verified prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TARGET: ${{ steps.assemble.outputs.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v0.1.5-beta
+          out="$RUNNER_TEMP/$tag"
+          archive="lvmeng-mod-manager-$tag.zip"
+          assets=("$out/$archive" "$out/$archive.sha256")
+          sources="$out/lvmeng-mod-source-$tag.zip"
+          if test -f "$sources"; then
+            assets+=("$sources")
+          fi
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+             gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "Release or tag already exists. No assets were overwritten."
+            exit 1
+          fi
+          gh release create "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_TARGET" --title 'v0.1.5-beta 绿梦 Mod 管理器' --prerelease \
+            --notes-file release-assets/v0.1.5-beta/notes.md
