@@ -1,0 +1,36 @@
+name: Set performance update as the latest release
+
+on:
+  push:
+    branches: [publish/0.1.5-BETA-V2]
+    paths: [.github/workflows/set-beta-v2-latest.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  release-order:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set V2 as latest and flag the superseded release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          old="repos/$GITHUB_REPOSITORY/releases/442919144"
+          new="repos/$GITHUB_REPOSITORY/releases/443028905"
+          test "$(gh api "$old" --jq .tag_name)" = "v0.1.5-beta"
+          gh api "$new" | jq -e '.tag_name == "0.1.5-BETA-V2" and .draft == false and
+            (.assets | length) == 3 and
+            any(.assets[]; .digest == "sha256:ab7299eeb11435339de53e9cb8ee2612549e53436dc0636a172847681d3f27ae")' >/dev/null
+          gh api -X PATCH "$new" -F prerelease=false -f make_latest=true --jq .html_url
+          banner="> **旧版已被 0.1.5-BETA-V2 取代。** 请[下载已修复掉帧的版本](https://github.com/$GITHUB_REPOSITORY/releases/download/0.1.5-BETA-V2/lvmeng-mod-manager-0.1.5-BETA-V2.zip)，或[查看新版说明](https://github.com/$GITHUB_REPOSITORY/releases/tag/0.1.5-BETA-V2)。"
+          gh api "$old" |
+            jq --arg banner "$banner" '{
+              name: "v0.1.5-beta（旧版，请下载 0.1.5-BETA-V2）",
+              body: (if (.body // "" | startswith($banner)) then .body else $banner + "\n\n" + (.body // "") end),
+              make_latest: "false"
+            }' |
+            gh api -X PATCH "$old" --input - --jq .html_url
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = "0.1.5-BETA-V2"
