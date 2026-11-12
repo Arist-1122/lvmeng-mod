@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="绿梦 Mod 开发技术手册，涵盖资源读取、原生绘制、模型和表情、材质特效、会话切换、性能与验收。">
+<title>《绿梦：时空之声》Mod 技术手册</title>
+<style>
+:root{color-scheme:light;--ink:#142621;--sub:#486158;--muted:#506c62;--line:#d9e5de;--paper:#fff;--shell:#f4f8f4;--teal:#07634b;--teal-dark:#063c2f;--code:#112b24;--hint:#e8f4ec}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:20px}
+body{margin:0;background:var(--shell);color:var(--ink);font:16px/1.77 "Segoe UI","Microsoft YaHei UI","PingFang SC","Noto Sans CJK SC",sans-serif}
+a{color:var(--teal);text-decoration-thickness:1px;text-underline-offset:.2em}
+a:focus-visible{outline:3px solid #d79224;outline-offset:4px}
+.skip{position:absolute;top:0;left:16px;z-index:2;background:white;padding:8px 14px;transform:translateY(-150%)}
+.skip:focus{transform:none}
+.mast{background:#10392e;color:#f6fff9;border-bottom:6px solid #87be93}
+.topline,.hero,.layout,.bottom{width:min(100% - 64px,1220px);margin-inline:auto}
+.topline{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #568073}
+.topline a{color:#e1f7e9;font-size:14px}
+.project{font-weight:700;letter-spacing:.04em}
+.hero{padding:54px 0 58px}
+.edition{font:650 13px/1.4 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:#d1edd9}
+h1{font-size:clamp(2rem,5.4vw,4.1rem);line-height:1.13;letter-spacing:-.035em;margin:13px 0 16px;max-width:980px}
+.hero p{font-size:clamp(1rem,1.75vw,1.24rem);color:#e5f5ec;max-width:780px;margin:0}
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);align-items:start;gap:38px;padding:40px 0 66px}
+.toc{position:sticky;top:22px;max-height:calc(100vh - 44px);overflow:auto;border-right:1px solid var(--line);padding:0 15px 10px 0}
+.toc h2{font-size:.82rem;letter-spacing:.12em;margin:0 0 8px;color:var(--muted)}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:5px 6px;font-size:.875rem;line-height:1.55;color:var(--ink);text-decoration:none;border-radius:4px}
+.toc a:hover,.toc a:focus-visible{background:var(--hint);color:var(--teal)}
+.toc a span{flex:0 0 2ch;white-space:nowrap;color:var(--teal);font:600 12px ui-monospace,Consolas,monospace}
+main{min-width:0}
+.intro{font-size:1.06rem;color:var(--sub);margin:0 0 18px}
+.flow{margin:22px 0 26px;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;list-style:none}
+.flow li{padding:11px 12px;background:var(--hint);border-top:2px solid #7caa8c;min-width:0;font-size:.85rem;line-height:1.52}
+.flow strong{display:block;color:var(--teal-dark);font-size:.9rem;margin-bottom:3px}
+.flow span{color:var(--sub)}
+.chapter{padding:28px 32px 30px;background:var(--paper);border:1px solid var(--line);border-radius:8px;margin:0 0 18px}
+.chapter h2{font-size:clamp(1.3rem,3vw,1.78rem);line-height:1.33;margin:0 0 16px;letter-spacing:-.02em}
+.chapter h3{font-size:1.12rem;margin:24px 0 7px;color:var(--teal-dark)}
+.chapter p,.chapter li{overflow-wrap:anywhere}
+.chapter p{margin:0 0 13px}
+.chapter p:last-child,.chapter ul:last-child,.chapter ol:last-child{margin-bottom:0}
+.chapter ul,.chapter ol{padding-left:1.5em;margin:12px 0 15px}
+.chapter li{margin:6px 0}
+.chapter strong{color:var(--teal-dark)}
+.table-wrap{overflow:auto;margin:15px 0 16px}
+table{width:100%;border-collapse:collapse;font-size:.91rem;line-height:1.64}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+thead th{background:var(--hint);color:var(--teal-dark);font-weight:700}
+tbody tr:nth-child(even){background:#f9fbfa}
+code{font-family:ui-monospace,Consolas,"Microsoft YaHei UI",monospace;font-size:.91em}
+:not(pre)>code{background:#edf3ef;padding:.12em .28em;border-radius:4px}
+pre{background:var(--code);color:#e9f9ee;padding:15px 17px;border-radius:6px;overflow:auto;line-height:1.65}
+.bottom{padding:21px 0 30px;border-top:1px solid var(--line);display:flex;gap:15px;justify-content:space-between;color:var(--sub);font-size:.875rem}
+@media(max-width:930px){
+  .topline,.hero,.layout,.bottom{width:min(100% - 36px,1220px)}
+  .layout{grid-template-columns:180px minmax(0,1fr);gap:19px}
+  .chapter{padding-inline:21px}
+}
+@media(max-width:680px){
+  .topline,.hero,.layout,.bottom{width:calc(100% - 28px)}
+  .topline{min-height:54px}
+  .hero{padding:33px 0 34px}
+  .layout{display:block;padding-top:18px}
+  .toc{position:static;max-height:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:10px 0 12px;border-right:0;border-bottom:1px solid var(--line);margin-bottom:18px;gap:0 4px}
+  .toc h2{grid-column:1/-1;padding-left:6px}
+  .toc a{overflow-wrap:anywhere}
+  .flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .flow li:last-child{grid-column:1/-1}
+  .chapter{padding:18px 14px;margin-bottom:12px}
+  .table-wrap table{min-width:460px}
+  pre{font-size:.84rem}
+}
+@media print{
+  body{background:white;font-size:10.5pt;color:#142621}
+  .mast{background:white;color:#142621;border-bottom:1px solid #aaa}
+  .topline,.toc,.skip,.flow,.bottom{display:none}
+  .hero,.layout{width:100%;display:block;padding:0}
+  .hero p,.edition{color:#142621}
+  .hero{margin-bottom:16px}
+  h1{font-size:28pt}
+  .chapter{border:0;padding:0;margin:16px 0}
+  .chapter h2,.chapter h3{break-after:avoid}
+  table,tr{break-inside:avoid}
+  pre{background:white;color:#142621;border:1px solid #aaa;white-space:pre-wrap}
+}
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#content">跳到正文</a>
+<header class="mast">
+  <div class="topline">
+    <span class="project">绿梦 Mod · 开发者文档</span>
+    <a href="https://github.com/Arist-1122/lvmeng-mod">GitHub 仓库</a>
+  </div>
+  <div class="hero">
+    <div class="edition">0.1.5 BETA V2 · WINDOWS / D3D12</div>
+    <h1>《绿梦：时空之声》Mod 技术手册</h1>
+    <p>从资源引用到实机换装。以 0.1.5 Beta V2 的六套公开适配为例，说明每一步怎么做、解决什么问题、如何验证，以及出现异常时怎样回到原版。</p>
+  </div>
+</header>
+<div class="layout">
+  <nav class="toc" aria-label="章节目录">
+    <h2>章节目录</h2>
+    <a href="#01-版本与适用范围"><span>01</span>版本与适用范围</a>
+<a href="#02-读取资源与建立引用图"><span>02</span>读取资源与建立引用图</a>
+<a href="#03-从资源引用找到游戏里的绘制"><span>03</span>从资源引用找到游戏里的绘制</a>
+<a href="#04-拆分原版网格与制作原创衣装"><span>04</span>拆分原版网格与制作原创衣装</a>
+<a href="#05-跨游戏模型与原生骨架"><span>05</span>跨游戏模型与原生骨架</a>
+<a href="#06-绑定表情与大招"><span>06</span>绑定表情与大招</a>
+<a href="#07-贴图受光与战斗特效"><span>07</span>贴图、受光与战斗特效</a>
+<a href="#08-绘制事务与失败回退"><span>08</span>绘制事务与失败回退</a>
+<a href="#09-管理器打包与会话热切换"><span>09</span>管理器、打包与会话热切换</a>
+<a href="#10-如何查出并修复掉帧"><span>10</span>如何查出并修复掉帧</a>
+<a href="#11-怎样证明每一步有效"><span>11</span>怎样证明每一步有效</a>
+<a href="#12-复用流程做下一套-mod"><span>12</span>复用流程做下一套 Mod</a>
+<a href="#13-尚未解决的问题"><span>13</span>尚未解决的问题</a>
+<a href="#14-源码与公开范围"><span>14</span>源码与公开范围</a>
+  </nav>
+  <main id="content">
+    <p class="intro">这份手册写给想做下一套 Mod 的开发者。可以先做一笔确定的贴图替换，随后增加网格、骨骼、表情、特效和会话切换。每一步都留下能复查的输入、一个正例和至少一个负例。遇到混画、漏色、错骨或掉帧时，才能确定问题在哪一层。</p>
+    <ol class="flow" aria-label="开发流程">
+      <li><strong>读取</strong><span>从对象找到资源</span></li>
+      <li><strong>定位</strong><span>从资源找到绘制</span></li>
+      <li><strong>制作</strong><span>网格、蒙皮与材质</span></li>
+      <li><strong>替换</strong><span>匹配、提交与恢复</span></li>
+      <li><strong>复测</strong><span>回放、打包与实机</span></li>
+    </ol>
+    <section class="chapter"><h2 id="01-版本与适用范围">01 版本与适用范围</h2>
+<p>这条路线针对研究样本中的 <strong>Windows x64、Unity 2022.3.62f2、IL2CPP 和 Direct3D 12</strong>，以莉特莉丝「绮夜寐影」为目标。资源提取用于识别、比对和制作。当前公开运行方式在 D3D12 绘制层生效，由用户按管理器流程启动自己的游戏。做离线研究时，保持客户端安装和已有游戏会话只读。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>公开样例</th>
+<th>主要改动</th>
+<th>原版仍负责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>红黑</td>
+<td>图集改色、目标表面受光、已确认的战斗特效</td>
+<td>网格、骨架、动作和未适配的效果</td>
+</tr>
+<tr>
+<td>原创泳装「星潮晶华」</td>
+<td>新衣装几何、材质、贴合与部分头发绘制</td>
+<td>原脸、武器、原版战斗特效及动作来源</td>
+</tr>
+<tr>
+<td>里芙、卡芙卡、坎特蕾拉、伊芙的 2B 联动服</td>
+<td>跨游戏模型、材质、蒙皮与表情映射</td>
+<td>莉特莉丝的动作时序、实时姿态与原生绘制环境</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>资源副本 → 引用图 → 已验证的绘制样本 → 候选网格／贴图／像素程序 → 身份规则与回放 → 运行包 → 实机验证。</strong></p>
+<p><code>main/source</code> 展示基础红黑、便携入口和早期兼容策略。六套换装和 Beta V2 的增量实现看对应发行版源码。早期试验、离线审阅和最终发布包各有范围，引用数据时先核对版本。</p>
+</section><section class="chapter"><h2 id="02-读取资源与建立引用图">02 读取资源与建立引用图</h2>
+<ol>
+<li><strong>选样本。</strong> 从经过完整性检查的本地资源索引选择目标角色、衣装、特效和显式依赖。把包复制到研究目录，记录版本、输入摘要和依赖关系，复制后复核摘要。后续只读这批副本。</li>
+<li><strong>拆归档。</strong> 先读 UnityFS 的元数据、数据块与节点表。早期把受影响的首块直接送进标准 LZ4 会失败。参照公开的兼容读取实现验证处理顺序，兼容样本先恢复受影响块，再做正常 LZ4 解压。逐块核对预期长度，再按节点边界提取序列化对象及外部资源流。</li>
+<li><strong>解析对象。</strong> 用 Unity 对象读取工具沿 <code>Prefab → Transform → Renderer → Mesh / Material → Texture / Shader</code> 走引用。纹理像素也可能来自外部流或图集依赖。用归档、对象 ID 和引用关系定位，名字用于检索。</li>
+<li><strong>双份导出。</strong> OBJ 和预览图供肉眼检查。原坐标、三角索引、UV、法线、骨骼索引和权重、绑定矩阵及引用另存为结构化数据。预览的坐标系换手会调整轴和三角绕序，原值仍保留。记录纹理的原尺寸与格式，涉及运行时替换时另核对完整 mip 链。带负值的半浮点通道保留浮点表示，避免预览 PNG 截断数据。</li>
+<li><strong>核对产物。</strong> 检查节点与面索引不越界、权重和与声明一致、原坐标和预览能互相核对。用原位材质查看图集方向、透明边、UV 岛和缺失依赖。抽样 117 个主包加 3 个图集依赖成功解码，得到 27 个资源组和 322 个网格，资源组与角色数不是同一统计口径。</li>
+</ol>
+<p><strong>解决了什么。</strong> 将解压失败、依赖缺失、引用串错和转换失真分开排查。一个 OBJ 能正常打开，只证明了网格预览。原生骨表、变换、表情和动画需要另行读取与核对。</p>
+<p><strong>下一套要留下什么。</strong> 本地输入清单、引用图、部件表和回读报告。把未能解码的变体、缺依赖和数据缺口列出来。不同客户端版本和资源类别要重新抽样验证。</p>
+</section><section class="chapter"><h2 id="03-从资源引用找到游戏里的绘制">03 从资源引用找到游戏里的绘制</h2>
+<p>离线引用告诉你哪个对象可能用一张图。要替换游戏画面，还要找到它真正提交的绘制及当时的状态。</p>
+<ol>
+<li><strong>设计正负场景。</strong> 固定角色、皮肤、动作和镜头，采目标外观、原皮及相邻角色。分别核对展示、普通动作、连续闪避和大招。特效至少对比施放前、命中、落地和消失后。</li>
+<li><strong>拼全一次绘制。</strong> 记录它提交时的 VS/PS（顶点／像素着色器）身份、PSO（管线状态对象）、根签名、根参数、描述符表、纹理视图、顶点流、索引范围、拓扑、渲染目标和深度模板。用动作和通道标注观察结果。</li>
+<li><strong>追踪描述符来源。</strong> 描述符地址的含义会随复制、堆切换、销毁和重用而变。记录复制链及资源代次，按当前命令列表和堆状态解释地址。还要核对视图和上传内容。仅凭同一个槽位、相同索引数或相同 Shader 无法确定归属。</li>
+<li><strong>拆开同一动作的多笔绘制。</strong> 颜色、深度、阴影、描边、眼睛遮罩和动作残影常由不同程序或状态提交。按各自的输入与生命周期建立规则，证据不足的路径保留原版。</li>
+<li><strong>收窄候选再回放。</strong> 用着色器和几何范围先排除无关绘制，再核对纹理来源、实际绑定与资源代次。把目标绘制和会误命中的对照一起放进回归。</li>
+</ol>
+<p><strong>解决了什么。</strong> 早期索引数匹配、旧缓存和绑定快照都曾造成误判。多流布局里某个槽的 <code>stride</code> 为零也不能直接判整笔绘制无效。按实际引用的流、描述符复制与绘制边界重新核对后，才建立了可用的候选范围。</p>
+</section><section class="chapter"><h2 id="04-拆分原版网格与制作原创衣装">04 拆分原版网格与制作原创衣装</h2>
+<p>原版角色的脸、头发和部分饰物可以独立，身体与衣装也可能共用 <code>Body01</code>、<code>Body02</code> 或同一张图集。</p>
+<ul>
+<li><strong>忠实拆分。</strong> 按原三角面建立衣装、可见皮肤与混合边界组。每片保存原位置、原 UV、法线、骨权重和源面编号，必要时加顶点索引重排表。检查拆开再合并的几何、UV 与渲染结果。</li>
+<li><strong>处理遮挡区。</strong> 如果衣服下面原本没有皮肤面，新增身体或接缝标为推定重建，与忠实分割分开存放。它可以作为合体参考，其来源与原版网格不同。</li>
+<li><strong>制作衣装。</strong> 根据原角色体型和动作空间定版型，分开布片、带子、边缘与饰物，处理真实搭接和下层连续面。排 UV、做材质后，用正侧背和多个姿态检查肩、腰、腋、胯、肘、膝及发束接触。正面图无法证明厚度、下层遮盖和跨姿态净空。</li>
+<li><strong>接入原生域。</strong> 按材质、通道和可用骨表分配衣装。用目标骨链驱动有依据的布片，在边缘过渡权重。衣摆随目标骨链摆动；完整的布料或头发物理要单独设计与验证。</li>
+</ul>
+<p><strong>真实例子。</strong> 「星潮晶华」验证了原创衣装可进入原生渲染流程。实机后发曾出现大块锯齿，因为改过的颜色网格与原描边使用了不同几何。修复为同帧、同目标的已确认描边绘制提供配对网格，并沿用原状态。静态渲染和 GLB 用于审阅，长步和深屈肘仍有局部接触，薄纱及部分光照效果有待打磨。</p>
+</section><section class="chapter"><h2 id="05-跨游戏模型与原生骨架">05 跨游戏模型与原生骨架</h2>
+<ol>
+<li><strong>保留供体记录。</strong> 使用有权使用的供体，保留原 UV、三角面来源、材质、权重和形变。统一轴向、手系、单位和静置姿态，手系翻转时检查三角绕序和切线符号。</li>
+<li><strong>抽取目标骨架。</strong> 读取目标层级、静置矩阵与逆绑定矩阵。示例全身骨架为 336 骨，各个原生 Renderer 有自己的局部骨骼表。全局骨号必须转成对应分片的局部索引。</li>
+<li><strong>先对齐，再映射。</strong> 以髋肩、头颈、四肢链和手脚做静置对齐，保留可接受的造型比例。主骨按部位与作用映射，辅助骨按衣摆、发束或饰物用途处理。缺骨时选有证据的父骨或稳定锚点并记录降级。批量最近骨映射容易使肩袖、手指和发束跟错。</li>
+<li><strong>分片并修接缝。</strong> 按目标身体、头发、脸等绘制域分片。重合位置尽量使用一致权重，取两侧局部骨表交集，必要时重分域或在腰边渐变。保留 UV 岛、材质和源面映射。</li>
+<li><strong>编码并回读。</strong> 合并落在同一骨的权重，按目标布局保留至多四项并归一。对 <code>UNorm8</code> 权重按小数余量补足到总和 255，填充索引也要在合法骨表内。用编码后的实际数据回读静置、举臂和下蹲等离线姿态，检查裂缝、翻面、拉伸和量化误差。再在对应版本实机验证走动、连续闪避和大招。</li>
+</ol>
+<p><strong>真实故障。</strong> 早期跨游戏模型经过手系镜像后又多翻了一次三角绕序，颜色和描边用的剔除方向不同，展示页正面被灰红轮廓盖住。对照法线、索引和剔除模式逐域修正。卡芙卡的外衣与淡紫内衬有真实的反向面，保留供体内衬，去掉外层额外生成的反面，并单独处理内衬描边。只看静置模型无法证实这些通道在游戏里正确。</p>
+</section><section class="chapter"><h2 id="06-绑定表情与大招">06 绑定表情与大招</h2>
+<p>骨骼负责较大尺度的动作，脸部 BlendShape 负责闭眼、嘴形、眉眼及局部变形。原皮形变差值按原网格顶点索引，供体的拓扑和顶点顺序通常不同。</p>
+<ol>
+<li><strong>找实际权重来源。</strong> 读取原脸通道、动作片段及演出用到的槽与时序，检查中性值、峰值和连续动作。需要运动输出时，保留原生当前及上一帧的表情权重、骨骼状态。</li>
+<li><strong>映射供体形变。</strong> 先按闭眼、眉形、口部等语义匹配已有形变。按绑姿变换位置差值并重算法线差值。没有合适形变时，按原版运动与供体局部拓扑制作候选，保护眼睑、内嘴、下颌及同位接缝，逐帧查翻面。缺依据的槽保留中性。</li>
+<li><strong>编码到分片。</strong> 按新网格和各分片的顶点顺序写数据。此适配使用 32 槽布局，只驱动已映射且身份已验证的槽。脸的颜色、深度、阴影、描边及运动输出都要使用对应形状。</li>
+<li><strong>眼睛单独检查。</strong> 仅在已确认眼部顶点上调虹膜与头、眼骨的权重。看转眼时是否穿出眼睑，闭眼后是否漏眼，独立瞳孔与高光是否符合原动作。</li>
+<li><strong>测相邻动作。</strong> 单次大招通过后，再测展示切大招、连续闪避、残影和回到站姿。近景闪回原脸时逐笔核对脸色、脸深度、脸阴影和头发遮罩。旧累计读取额度曾令后续大招和闪避误回退，改为逐帧控制、区分主镜头与阴影，并继续核对原生压缩标志和资源归属。</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>例子</th>
+<th>已做的适配</th>
+<th>核对边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>里芙</td>
+<td>18 个供体形变、眼部权重校准</td>
+<td>原单卡流程的展示、连续闪避、大招有实机反馈，仍有权重和长飘带观感待修</td>
+</tr>
+<tr>
+<td>卡芙卡</td>
+<td>22 个供体形变、虹膜跟随校准</td>
+<td>所核对大招的 16 个启用槽覆盖 14 个，外套穿模待改善</td>
+</tr>
+<tr>
+<td>坎特蕾拉</td>
+<td>21 个供体形变，补瞳孔放大与高光移动</td>
+<td>所核对大招覆盖 16/16 个启用槽，其他动画需另测</td>
+</tr>
+<tr>
+<td>伊芙的 2B 联动服</td>
+<td>按原版口部运动重建 11 个局部形变，保留眼罩</td>
+<td>局部表情与暗部已验证若干路径，写实风格差异仍在</td>
+</tr>
+</tbody>
+</table></div>
+</section><section class="chapter"><h2 id="07-贴图受光与战斗特效">07 贴图、受光与战斗特效</h2>
+<h3 id="原网格改色">原网格改色</h3>
+<p>红黑路线保留原模型和 UV。改色保持目标图集尺寸、格式、透明度与完整 mip 链。早期基础包的对应图集为 BC7，先用各 mip 的稀疏块快速排除错误输入，再对去掉上传行 padding 的紧密行内容计算完整 SHA-256。稀疏块用于排除，完整身份用于授权替换。</p>
+<p>早期单卡在匹配的纹理上传阶段换数据，已上传的资源通常需要退出并重进才能恢复。六套热切换版的红黑观察原上传，在已确认的绘制中临时绑定改色图集和像素程序，随后恢复原绑定。因此可以在同一会话切回原版。</p>
+<h3 id="新网格材质">新网格材质</h3>
+<p>跨游戏模型按供体图、UV 平铺、材质色因子和透明规则烘页。已验证的高清路径把候选从 248 提升到 992 像素级，将 RGB 与原有透明覆盖分开。高分辨率 RGB 写入多级线性缓冲，像素程序按 UV 导数选 mip 并插值，alpha 仍取原紧凑材质路径。画面变清楚之后还要核对深度、阴影、描边、眼部遮罩和运动辅助输出，防止轮廓错位或闪避双影。发丝、掌指和 2B 的暗部优先用局部受光修正，保留原有的遮挡、亮部和裁切。</p>
+<h3 id="像素程序与-light">像素程序与 Light</h3>
+<ol>
+<li>从确切的特效绘制关联原生 VS/PS。光束、星芒、烟尘、碎片、残影、武器发光和 Light 分开检查。</li>
+<li>为确认的原生程序制作候选。克隆原 PSO，保留原 VS、根签名、拓扑、混合、深度模板与辅助目标布局，只改需要的字段。保留透明、裁剪、动态发光与无关输出。</li>
+<li>用材质常量、纹理尺寸和归属等条件限制目标分支。共用命中或场景资源必须增加作用范围证据。红黑对部分共享路径使用单人前台及目标衣装条件，来源不清楚的效果保留原色。</li>
+<li>粒子颜色与 Light 分开。红黑从 Shader 反射与确切灯光颜色定位目标表面的主光、附加光计算。对已确认的源色处理线性与伽马输入，保留亮度和其他光色。Unity 场景里的 Light 对象、地面和其他角色继续使用原计算。</li>
+<li>先做原生程序回放，再看实机里的命中、星芒、烟圈与落地。某一层改红仅证明这一层命中。红黑仍有未覆盖的技能及效果。</li>
+</ol>
+</section><section class="chapter"><h2 id="08-绘制事务与失败回退">08 绘制事务与失败回退</h2>
+<p>运行时使用 ReShade 的 D3D12 分派及项目补丁。文件校验和逐笔绘制判断承担不同职责。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>层次</th>
+<th>需要证明什么</th>
+<th>证据不足时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>包与宿主</td>
+<td>包文件摘要、组件合同、兼容版本及宿主身份</td>
+<td>拒绝加载或保留原版</td>
+</tr>
+<tr>
+<td>绘制来源</td>
+<td>确切 VS/PS、根签名、拓扑、顶点布局和索引／顶点范围</td>
+<td>跳过替换</td>
+</tr>
+<tr>
+<td>资源归属</td>
+<td>目标纹理视图、描述符堆与资源代次、所需 mip 身份、必要采样器</td>
+<td>保持未就绪或非目标</td>
+</tr>
+<tr>
+<td>渲染通道</td>
+<td>所需的深度、模板、目标及写入状态，按颜色、遮罩、阴影等分别核对</td>
+<td>保留原通道</td>
+</tr>
+<tr>
+<td>状态恢复</td>
+<td>PSO、输入装配、根绑定及动态状态恢复后与原快照相符</td>
+<td>恢复存疑时冻结受影响记录，等命令列表重置</td>
+</tr>
+</tbody>
+</table></div>
+<p>示意伪代码中的条件要从你自己的样本得出：</p>
+<pre><code class="language-text">处理当前绘制(draw, state):
+    若这是替换器自己的提交:
+        让原调用继续
+
+    rule = 匹配包、VS/PS、根绑定、网格范围、纹理身份及通道
+    若规则缺失、描述符失效、资源未就绪或范围越界:
+        让原调用继续
+
+    原状态 = 保存本规则会修改的绑定
+    若无法保存或无法准备候选:
+        让原调用继续
+
+    进入替换提交范围
+    尝试:
+        再次确认绑定与资源代次仍有效
+        绑定候选并提交替换绘制
+    最终:
+        恢复并核对原绑定
+        退出替换提交范围
+
+    若恢复无法证实：标记该记录代次不安全，阻止原调用，等待重置
+    若已提交替换：消费原调用，部分提交时停用该适配
+    其他情况：让原调用继续
+</code></pre>
+<p>实际恢复涉及输入装配视图、字节偏移、<code>stride</code>、范围、PSO、根参数、描述符堆及必要动态状态。高清页或脸部路径需要在扩展根签名下重放原参数，再把原绑定恢复。原绘制回退的前提是状态仍然可信。</p>
+<p><strong>真实故障。</strong> 大招曾闪回原模型。一条独立可写深度的描边被套进了普通镜头的只读深度复用规则。修复为独立写入建立自己的确切身份，复用路径继续核对同一深度目标、层及资源代次。分支之间不能借用尚未证明的条件。</p>
+</section><section class="chapter"><h2 id="09-管理器打包与会话热切换">09 管理器、打包与会话热切换</h2>
+<ol>
+<li><strong>包描述。</strong> 声明角色、皮肤、运行入口和清单。文件按相对路径组织，记录组件和载荷摘要。校验器拒绝缺件、摘要或合同不符、以及超出包范围的路径。</li>
+<li><strong>启动与兼容。</strong> 核对宿主身份、架构、Unity 分支与已确认的渲染来源。用户按管理器流程启动。工具按需申请权限，运行仍要通过图形守卫。启动修复包括提前创建所需目录，以及用有限查询和等待权限核对进程实例，避免因权限请求过宽误判退出。</li>
+<li><strong>观察与准备。</strong> 用户选目标后，当前外观继续工作；目标先观察原始绑定、准备资源。只让当前选中的组件提交替换。观察范围在命令列表开始／重置时确定，避免从一段已经录到一半的命令中推断完整状态。</li>
+<li><strong>提交切换。</strong> 合同、组件、会话及目标资源均就绪后，在主交换链呈现边界切换。未就绪保留当前外观，更新的请求可覆盖等待中的旧请求。租约失效撤销替换权限。</li>
+<li><strong>分派与恢复。</strong> 生命周期事件按需广播，高频绑定稳态只分派给当前外观，准备切换时最多涉及当前与目标。原模型稳态跳过这类分派。切回原模型恢复原版绘制并保留会话；已加载的图形组件可能驻留到游戏退出。</li>
+<li><strong>核对回执。</strong> 管理器发请求只是第一步。用游戏侧对同一运行实例的回执确认切换，再用画面检查外观、技能和战斗是否正确。六套之间及切回原皮后可继续换装，是本版热切换的实机目标。</li>
+</ol>
+</section><section class="chapter"><h2 id="10-如何查出并修复掉帧">10 如何查出并修复掉帧</h2>
+<p>曾出现启用 Mod 后明显掉帧，切回原皮仍掉帧。原皮状态的替换绘制计数已经为零，因此把排查移到驻留组件处理的常规图形事件上。</p>
+<ol>
+<li>用同一地图、视角和帧率配置比较原版、启用适配与切回原模型。</li>
+<li>用独立程序在同一适配器上比较系统 D3D12、旧 core 与新 core。关闭通用后处理，空置 addon 目录，执行同一批描述符复制。预热后比较多轮中位数。</li>
+<li>旧 core 在互斥锁下查询描述符 CPU/GPU 地址时扫描 8192 个预分配堆槽位。将查找改为遍历紧凑的活跃堆列表，销毁时同步移除，保留地址边界、对齐、重叠拒绝、资源代次及事务核对。</li>
+<li>用错地址、重叠区间、堆销毁、地址重用和复制事务回归，确认提速不会放宽资源身份条件。之后回原来的实机场景复测。</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>观测</th>
+<th>修复前</th>
+<th>修复后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>隔离环境，一批 32 个描述符复制</td>
+<td>约 111–118 微秒</td>
+<td>约 1.8–1.9 微秒</td>
+</tr>
+<tr>
+<td>曾掉帧的同一游戏场景</td>
+<td>约 30 FPS</td>
+<td>约 100–110 FPS</td>
+</tr>
+</tbody>
+</table></div>
+<p>隔离对照定位的是一处 CPU 开销，游戏实测给出特定场景下的结果。其他硬件、地图、动作和客户端版本仍需测量。</p>
+</section><section class="chapter"><h2 id="11-怎样证明每一步有效">11 怎样证明每一步有效</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>验证层</th>
+<th>实际检查</th>
+<th>可以得出的结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>静态与回读</td>
+<td>原面、UV、索引范围、权重、绑定矩阵、贴图与 mip、导出 GLB</td>
+<td>数据可读，结构和样本形态符合要求</td>
+</tr>
+<tr>
+<td>原生回放</td>
+<td>建立 D3D12 PSO，使用 WARP 软件回放，对比颜色、透明覆盖、深度、遮罩和辅助输出</td>
+<td>已构造的输入及正负对照按规则执行</td>
+</tr>
+<tr>
+<td>隔离硬件与包</td>
+<td>独立 D3D12 宿主、真实呈现边界、篡改拒绝、资源代次重用及绑定恢复</td>
+<td>夹具和对应硬件满足已测合同</td>
+</tr>
+<tr>
+<td>游戏实测</td>
+<td>展示、移动、连续闪避、大招、战斗后恢复、来回切换与性能对照</td>
+<td>该客户端版本和测试场景下的可见结果</td>
+</tr>
+</tbody>
+</table></div>
+<p>每个新增通道至少测 <strong>目标命中、其他角色拒绝、错材质拒绝、失效资源拒绝、切换和回退</strong>。单次截图覆盖不了动作时序，提交计数只说明走到某处。GLB 预览可以看模型与局部动作，游戏里的受光、布料和完整绑定须另验。记录版本、样本、场景条件和预期差异；对外只带脱敏结果。</p>
+</section><section class="chapter"><h2 id="12-复用流程做下一套-mod">12 复用流程做下一套 Mod</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>你要做的事</th>
+<th>进入下一步前</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. 划范围</td>
+<td>选一个角色、一套皮肤和一个可重复场景。先挑改色、模型或特效中的一项</td>
+<td>写下目标和应保留原版的场景</td>
+</tr>
+<tr>
+<td>2. 建资产表</td>
+<td>提取目标与依赖，建立 Renderer、材质与纹理引用</td>
+<td>用原材质正确回读，记录源面和 UV</td>
+</tr>
+<tr>
+<td>3. 建绘制样本</td>
+<td>追踪原 VS/PS、实际绑定、纹理视图和通道</td>
+<td>同 Shader 的非目标样本被拒绝</td>
+</tr>
+<tr>
+<td>4. 做最小修改</td>
+<td>先挑一张图或一片网格，确认格式、索引、材质、骨表</td>
+<td>软件回放出现预期差异，并通过恢复对照</td>
+</tr>
+<tr>
+<td>5. 扩到动作</td>
+<td>补面部、阴影、描边、遮眼、淡出和残影中已确认的通道</td>
+<td>对应近景及动作切换没有混画或错层</td>
+</tr>
+<tr>
+<td>6. 封包</td>
+<td>为自己的角色与皮肤建立规则和相对路径清单</td>
+<td>包校验、失败回退与资源就绪均可复查</td>
+</tr>
+<tr>
+<td>7. 实机复测</td>
+<td>核对原版、替换、切回及再切换</td>
+<td>记录已验证场景、性能和未解决问题</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>一个例子。</strong> 想把新角色的发饰改色，先从发饰 Renderer 找到材质与图集页。挑一帧发饰可见的画面，找到对应绘制和实际上传。把同场景其他发饰或同 Shader 的物件作为负例。只改一块明显颜色，用 WARP 看目标是否改色、非目标及后续绘制是否保持原样，再到实机看展示和动作。若颜色正确、描边位置不对，查描边的几何与深度状态，并给它建立独立规则。</p>
+<p>本地观察表可包含这些字段。这是一份记录模板，运行合同需要从已验证的具体样本生成。</p>
+<pre><code class="language-text">目标角色 / 皮肤 / 客户端版本:
+场景与动作:
+Renderer → Mesh / Material / Texture:
+绘制通道:
+VS / PS / 根签名身份:
+顶点布局 / 索引范围 / 纹理视图与资源代次:
+命中条件与拒绝条件:
+原状态 → 候选修改 → 恢复状态:
+离线回读 / 软件回放 / 实机观察:
+尚缺的样本与回退行为:
+</code></pre>
+<p>管理器可以容纳新适配。每个新角色都要建立自己的身份规则、骨表、材质和动作覆盖。</p>
+</section><section class="chapter"><h2 id="13-尚未解决的问题">13 尚未解决的问题</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>目前做到哪里</th>
+<th>下一步如何证实</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>红黑漏色或共享效果</td>
+<td>部分技能和受光已适配，仍有原色或漏掉的效果层</td>
+<td>对漏色动作逐层采样，配同屏非目标负例</td>
+</tr>
+<tr>
+<td>原创衣装的动态与材质</td>
+<td>原创网格能实机显示，薄纱、极端姿态贴合和部分材质仍需打磨</td>
+<td>同镜头比较实机连续动作与原生轮廓，逐件核对接触</td>
+</tr>
+<tr>
+<td>四套供体的贴合和风格</td>
+<td>骨骼、表情与大招样本已接入，里芙权重、卡芙卡外套穿模、坎特蕾拉头身比和 2B 写实风格仍有差异</td>
+<td>增加极限姿态及多光照样本，分部件修权重与材质</td>
+</tr>
+<tr>
+<td>表情与通道覆盖</td>
+<td>已适配一批大招、普通动作和演出路径，个别启用槽缺失</td>
+<td>继续比对片段与槽，验证遮罩、深度、阴影和上一帧输出</td>
+</tr>
+<tr>
+<td>新客户端、其他角色与硬件</td>
+<td>当前精确守卫用于已确认的来源和对象</td>
+<td>新版本重新采样，复查兼容来源、回退与性能</td>
+</tr>
+<tr>
+<td>独立构建完整发行包</td>
+<td>已公开原创实现、部分回归夹具及 core 补丁，发行包还需要适配合同、素材和生成表等输入</td>
+<td>按源码说明准备自己的合法输入，逐个校验产物</td>
+</tr>
+</tbody>
+</table></div>
+</section><section class="chapter"><h2 id="14-源码与公开范围">14 源码与公开范围</h2>
+<ul>
+<li><a href="https://github.com/Arist-1122/lvmeng-mod/releases/tag/0.1.5-BETA-V2">0.1.5 Beta V2 的发布说明、管理器与源码附件</a>。解压源码附件后，<code>source/runtime/session-switch/</code> 是会话控制和测试入口，<code>source/runtime/crossgame-actor/</code> 是跨游戏绘制与表情，<code>source/runtime/adapters/</code> 是红黑和星潮晶华的适配，<code>source/runtime/shader-tools/</code> 是着色处理工具，<code>source/core/release-core-source.json</code> 记录上游与补丁顺序。Windows x64 工具链、上游和外部输入见归档说明。描述符隔离基准可从 <code>verify_descriptor_cost.cpp</code> 读起。归档的 Python 包装器还依赖未随包提供的 <code>verify_switch_startup.py</code>，运行它前需补齐依赖。</li>
+<li><a href="https://github.com/Arist-1122/lvmeng-mod/tree/main/docs/releases/v0.1.5-beta">六套 Beta 样例与技术概述</a>。包含各套的表现、变形覆盖与阶段限制。</li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/managing-graphics-pipeline-state-in-direct3d-12">D3D12 管线状态</a>、<a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-heaps">描述符堆</a>、<a href="https://learn.microsoft.com/en-us/windows/win32/direct3darticles/directx-warp">WARP 软件渲染</a>。用于核对通用 API 语义。</li>
+</ul>
+<h3 id="从哪些文件开始读">从哪些文件开始读</h3>
+<p>以下路径相对于 <strong>V2 源码 ZIP</strong>。先读使用场景，再沿着条件、资源绑定和测试入口往下看。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>你要改哪一部分</th>
+<th>先读这里</th>
+<th>首个对照</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>会话切换与原模型恢复</td>
+<td><code>source/runtime/session-switch/SwitchPolicy.hpp</code>、<code>ComboActor.cpp</code>、<code>verify_switch.cpp</code></td>
+<td>原模型 → A → B → 原模型。让 B 在未就绪时等待</td>
+</tr>
+<tr>
+<td>网格提交与状态恢复</td>
+<td><code>source/runtime/crossgame-actor/CrossgameDraw.hpp</code></td>
+<td>命中目标，再用错范围和失效资源做反例</td>
+</tr>
+<tr>
+<td>脸部与高清图集</td>
+<td><code>source/runtime/crossgame-actor/CrossgameFaceExpressionDraw.hpp</code>、<code>CrossgameHDDraw.hpp</code>，以及 <code>source/runtime/shader-tools/</code></td>
+<td>同一帧比较颜色、遮罩、深度与运动输出</td>
+</tr>
+<tr>
+<td>描述符性能修复</td>
+<td><code>source/core/release-core-source.json</code>、<code>core_descriptor_live_heaps_r13.patch</code></td>
+<td>同一适配器上用相同的描述符复制批次比较前后版本</td>
+</tr>
+</tbody>
+</table></div>
+<p>原创代码按<a href="https://github.com/Arist-1122/lvmeng-mod/blob/main/LICENSE">项目许可证</a>公开，第三方代码遵循各自的许可。使用者自行准备拥有使用权的素材、运行环境与构建输入。手册中的示例使用相对路径或说明性字段。</p>
+<p>这是玩家个人的非商业技术项目，游戏、角色及美术资源权利归各自权利人。欢迎从一个能复查的小例子开始，把验证过的通道、踩过的坑和仍未解决的问题也留给下一位开发者。</p>
+</section>
+  </main>
+</div>
+<footer class="bottom">
+  <span>《绿梦：时空之声》Mod 技术手册</span>
+  <a href="#top">回到顶部 ↑</a>
+</footer>
+</body>
+</html>
