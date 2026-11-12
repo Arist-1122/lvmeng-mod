@@ -67,28 +67,24 @@
 感谢所有尊重原创、支持 Mod 创作以及愿意分享技术经验的人。
 
 <!-- reviewed-v0.1.0 -->
-## 可用工具与当前实例 · v0.1.2 预览版
+## 可用工具与当前实例 · v0.1.5-beta
 
-[下载完整管理器与莉特莉丝 Mod](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.2-preview/lvmeng-mod-manager-v0.1.2-preview.zip) · [快速开始](docs/快速开始.md) · [启动权限与排障](docs/启动权限与排障.md) · [更新兼容策略](docs/更新兼容策略.md) · [完整技术流程](docs/技术流程.md) · [验证与限制](docs/验证与限制.md)
+[下载管理器与六套 Mod](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.5-beta/lvmeng-mod-manager-v0.1.5-beta.zip) · [发布说明](https://github.com/Arist-1122/lvmeng-mod/releases/tag/v0.1.5-beta) · [源码包](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.5-beta/lvmeng-mod-source-v0.1.5-beta.zip) · [SHA-256 校验文件](https://github.com/Arist-1122/lvmeng-mod/releases/download/v0.1.5-beta/lvmeng-mod-manager-v0.1.5-beta.zip.sha256)
 
-完整包解压后打开 `LvmengModManager.exe`，选择自己的 `Lumin.exe`，检查包与游戏版本，再打开内置 Mod 的运行器。如果下载整个源码仓库，可双击根目录“启动管理器.cmd”，离线校验和组装后打开相同管理器。管理器支持添加角色、皮肤和独立适配的 Mod，游戏及管理器目录可更换。
+这一版在同一个管理器窗口中提供莉特莉丝「绮夜寐影」的六套外观。游戏运行期间可以换装、切回原模型，再继续换装。
 
-v0.1.2 调整启动权限处理：管理器与运行器接受普通或管理员方式打开，启动助手按需要请求权限。自动启动优先使用当前桌面的普通用户上下文；手动启动时，先等运行器提示助手就绪，再从自己的游戏启动器正常进入。系统关闭 UAC 或桌面本身已处于高权限时，按实际可用上下文处理，不要求用户修改 UAC 设置。权限兼容不代表已经通过管理员实机或完整游戏画面验收，具体操作见[启动权限与排障](docs/启动权限与排障.md)。
+1. 完整解压运行包，打开 `LvmengModManager.exe`，选择已安装的 `Lumin.exe` 并检查兼容性。
+2. 选中初始外观，点「用所选皮肤启动」。手动启动时，先等助手就绪，再从自己的游戏启动器进入。
+3. 进入莉特莉丝「绮夜寐影」后，在同一管理器窗口选择外观并点「应用所选皮肤」。点「切回原模型」可恢复原版外观。
 
-当前实例保留原几何、动画和 UV，提供银发红瞳、红白黑服装、黑红无人机及红黑战斗特效。新增目标表面受光和命中/破防星芒补充已合入。共享特效受单人前台与目标衣装见证约束；共享资源并不构成独占角色归属，具体边界见验证文档。
+| 红黑与技能受光 | 星潮晶华 | 里芙 |
+| --- | --- | --- |
+| <img src="docs/releases/v0.1.5-beta/previews/redblack.png" alt="红黑与技能受光" width="220"> | <img src="docs/releases/v0.1.5-beta/previews/starsea.png" alt="星潮晶华" width="220"> | <img src="docs/releases/v0.1.5-beta/previews/lyfe.png" alt="里芙" width="220"> |
 
-沿用 v0.1.1 的官网客户端兼容修复：已知客户端与更新客户端均验证游戏身份、64位架构、Unity 分支、完整渲染来源和最新完整缓存清单；程序文件变化且这些条件仍匹配时可以继续使用。渲染资源变化或无法验证时会说明原因，运行时精确资源守卫保留。本机位置、用户设置和诊断留在本地，发布 ZIP 不包含这些信息。
+| 卡芙卡 | 2B | 坎特蕾拉 |
+| --- | --- | --- |
+| <img src="docs/releases/v0.1.5-beta/previews/kafka.png" alt="卡芙卡" width="220"> | <img src="docs/releases/v0.1.5-beta/previews/2b.png" alt="2B" width="220"> | <img src="docs/releases/v0.1.5-beta/previews/cantarella.png" alt="坎特蕾拉" width="220"> |
 
-当前完整组合通过离线检查与独立包链审查，仍待用户实机验收。不能把离线结果理解为所有动作已经实机通过，也不承诺未知客户端更新后继续适用。
+六套都是阶段性成果。红黑仍有部分特效使用原版颜色。星潮晶华是原创泳装，版型、轮廓和材质还需打磨。其余四套已接通角色模型与表情绑定，部分场景仍会发灰。游戏更新后请重新检查兼容性。
 
-| 银发红白黑原服装：正面 | 斜侧 |
-| --- | --- |
-| ![正面离线模型展示](images/model-front-v20261104.png) | ![斜侧离线模型展示](images/model-oblique-v20261104.png) |
-
-以上是 2026-11-04 设计阶段的离线模型展示，早于本次特效与受光补充。
-
-![管理器内置真实 Mod](images/manager-preview-v20261106.png)
-
-源码和构建入口见 [source/README.md](source/README.md)。第三方组件保留各自许可证；项目许可证不改变游戏资源和第三方代码的权利归属。发布包没有完整 stock 图集、游戏 Bundle/CAB、模型库、本机游戏位置或会话日志。
-
-完整文件摘要见 [release_manifest.json](release_manifest.json) 与 [SHA256SUMS.txt](SHA256SUMS.txt)。
+[六套外观详情、技术流程与验证范围](docs/releases/v0.1.5-beta/README.md) · [历史版本 v0.1.2-D](https://github.com/Arist-1122/lvmeng-mod/releases/tag/v0.1.2-D) · [全部版本](https://github.com/Arist-1122/lvmeng-mod/releases)
