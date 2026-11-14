@@ -1,0 +1,37 @@
+name: Set 0.16-beta as the latest release
+
+on:
+  push:
+    branches:
+      - publish/set-016-beta-latest
+    paths:
+      - .github/workflows/set-016-beta-latest.yml
+
+permissions:
+  contents: write
+
+jobs:
+  set-latest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify the existing release and mark it as latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_api="repos/$GITHUB_REPOSITORY/releases/445005825"
+          release=$(gh api "$release_api")
+          jq -e '
+            .tag_name == "0.16-beta" and
+            .draft == false and
+            (.assets | length) == 3 and
+            any(.assets[]; .name == "lvmeng-mod-manager-0.16-beta.zip" and
+              .digest == "sha256:47530c7e01ff7830e40808a882f10ea7532c13e89558b69cc02820bc5a2963af")
+          ' <<< "$release" >/dev/null
+
+          gh api -X PATCH "$release_api" -F prerelease=false -f make_latest=true \
+            --jq '{tag_name, prerelease, html_url}'
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" \
+            --jq '.tag_name' | grep -Fx '0.16-beta'
