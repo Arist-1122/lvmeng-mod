@@ -1,4 +1,4 @@
-name: Set 0.16-beta as the latest release
+name: Preserve the beta label after release reordering
 
 on:
   push:
@@ -11,63 +11,21 @@ permissions:
   contents: write
 
 jobs:
-  set-latest:
+  restore-beta-label:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Verify the existing release and mark it as latest
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_api="repos/$GITHUB_REPOSITORY/releases/445005825"
-          release=$(gh api "$release_api")
-          jq -e '
-            .tag_name == "0.16-beta" and
-            .draft == false and
-            (.assets | length) == 3 and
-            any(.assets[]; .name == "lvmeng-mod-manager-0.16-beta.zip" and
-              .digest == "sha256:47530c7e01ff7830e40808a882f10ea7532c13e89558b69cc02820bc5a2963af")
-          ' <<< "$release" >/dev/null
-
-          gh api -X PATCH "$release_api" -F prerelease=false -f make_latest=true \
-            --jq '{tag_name, prerelease, html_url}'
-          gh api "repos/$GITHUB_REPOSITORY/releases/latest" \
-            --jq '.tag_name' | grep -Fx '0.16-beta'
-      - name: Date the existing tag with the published release date
+      - name: Verify the dated tag and restore the prerelease label
         shell: bash
         run: |
           set -euo pipefail
           api="repos/$GITHUB_REPOSITORY"
-          tag="0.16-beta"
-          release_commit="18eae5c2b8ccc4060f9731a27b0d54bac5c4a724"
-          ref=$(gh api "$api/git/ref/tags/$tag")
-          ref_type=$(jq -er '.object.type' <<< "$ref")
-          ref_sha=$(jq -er '.object.sha' <<< "$ref")
-          release_date=$(gh api "$api/releases/445005825" --jq '.published_at')
-
-          if [[ "$ref_type" == "tag" ]]; then
-            gh api "$api/git/tags/$ref_sha" |
-              jq -e --arg commit "$release_commit" --arg date "$release_date" \
-                '.object.type == "commit" and .object.sha == $commit and .tagger.date == $date' >/dev/null
-            exit 0
-          fi
-          [[ "$ref_type" == "commit" && "$ref_sha" == "$release_commit" ]]
-
-          annotated_tag=$(jq -n --arg tag "$tag" --arg commit "$release_commit" --arg date "$release_date" '{
-            tag: $tag,
-            message: "0.16-beta",
-            object: $commit,
-            type: "commit",
-            tagger: {
-              name: "github-actions[bot]",
-              email: "41898282+github-actions[bot]@users.noreply.github.com",
-              date: $date
-            }
-          }' | gh api -X POST "$api/git/tags" --input - --jq '.sha')
-          [[ "$(gh api "$api/git/ref/tags/$tag" --jq '.object.sha')" == "$release_commit" ]]
-          gh api -X PATCH "$api/git/refs/tags/$tag" -f sha="$annotated_tag" -F force=true \
-            --jq '.ref'
-          gh api "$api/git/ref/tags/$tag" |
-            jq -e --arg object "$annotated_tag" '.object.type == "tag" and .object.sha == $object' >/dev/null
+          tag_object=$(gh api "$api/git/ref/tags/0.16-beta" --jq '.object | select(.type == "tag") | .sha')
+          gh api "$api/git/tags/$tag_object" |
+            jq -e '.object.sha == "18eae5c2b8ccc4060f9731a27b0d54bac5c4a724" and .tagger.date == "2026-11-14T04:24:28Z"' >/dev/null
+          release="$api/releases/445005825"
+          gh api "$release" | jq -e '.tag_name == "0.16-beta" and .draft == false' >/dev/null
+          gh api -X PATCH "$release" -F prerelease=true -f make_latest=false |
+            jq -e '.tag_name == "0.16-beta" and .prerelease == true' >/dev/null
