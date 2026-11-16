@@ -2,6 +2,12 @@
 
 这是一个由玩家个人发起的非商业 Mod 制作与技术探索项目。
 
+> **最新发布 · 0.1.8-beta**
+>
+> 红黑战斗特效与闪避残影已修复，提供六套外观。完整红黑技能特效需选红黑开局。
+>
+> [下载六套热切换包](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.8-beta/lvmeng-mod-manager-0.1.8-beta.zip) · [发布说明与实机截图](https://github.com/Arist-1122/lvmeng-mod/releases/tag/0.1.8-beta)
+
 > **开发者入口 · 0.1.5 Beta V2 技术手册**
 >
 > [在 GitHub 直接阅读](docs/modding-guide.md) · [HTML 阅读版（下载后打开）](docs/modding-guide.html)
@@ -73,7 +79,7 @@
 感谢所有尊重原创、支持 Mod 创作以及愿意分享技术经验的人。
 
 <!-- reviewed-v0.1.0 -->
-## 可用工具与当前实例 · 0.1.5-BETA-V2（紧急优化帧数）
+## 历史发行 · 0.1.5-BETA-V2（紧急优化帧数）
 
 [下载管理器与六套 Mod](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.5-BETA-V2/lvmeng-mod-manager-0.1.5-BETA-V2.zip) · [发布说明](https://github.com/Arist-1122/lvmeng-mod/releases/tag/0.1.5-BETA-V2) · [源码包](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.5-BETA-V2/lvmeng-mod-source-0.1.5-BETA-V2.zip) · [SHA-256 校验文件](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.5-BETA-V2/lvmeng-mod-manager-0.1.5-BETA-V2.zip.sha256)
 
