@@ -1,0 +1,242 @@
+{
+  "base": {
+    "bytes": 329019838,
+    "sha256": "47530c7e01ff7830e40808a882f10ea7532c13e89558b69cc02820bc5a2963af"
+  },
+  "manager": {
+    "filename": "lvmeng-mod-manager-0.1.8-beta.zip",
+    "bytes": 333820628,
+    "sha256": "e8e420a7f79fbb2dab146f77c5084971da10221995db85eec2f6d378b4ece9b2",
+    "ranges": [
+      [
+        "base",
+        0,
+        1815
+      ],
+      [
+        "data",
+        0,
+        29660
+      ],
+      [
+        "base",
+        31482,
+        43780
+      ],
+      [
+        "data",
+        29660,
+        20954
+      ],
+      [
+        "base",
+        95591,
+        20493
+      ],
+      [
+        "data",
+        50614,
+        115371
+      ],
+      [
+        "base",
+        220463,
+        2370604
+      ],
+      [
+        "data",
+        165985,
+        41351
+      ],
+      [
+        "base",
+        2632314,
+        752
+      ],
+      [
+        "data",
+        207336,
+        893
+      ],
+      [
+        "base",
+        2633917,
+        148022858
+      ],
+      [
+        "data",
+        208229,
+        126771
+      ],
+      [
+        "base",
+        150783157,
+        133664174
+      ],
+      [
+        "data",
+        335000,
+        173585
+      ],
+      [
+        "base",
+        284607971,
+        2279
+      ],
+      [
+        "data",
+        508585,
+        2374175
+      ],
+      [
+        "base",
+        286978780,
+        21265133
+      ],
+      [
+        "data",
+        2882760,
+        13187
+      ],
+      [
+        "base",
+        308257101,
+        19035582
+      ],
+      [
+        "data",
+        2895947,
+        2483
+      ],
+      [
+        "base",
+        327297164,
+        1479463
+      ],
+      [
+        "data",
+        2898430,
+        5015265
+      ]
+    ]
+  },
+  "source": {
+    "filename": "lvmeng-mod-source-0.1.8-beta.zip",
+    "bytes": 548892,
+    "sha256": "c971c72606afed9011d1f7d583faa0b23f327266e4d624f8407556229ee111f5",
+    "offset": 7913695
+  },
+  "parts": [
+    {
+      "path": "parts/data-000.part",
+      "bytes": 524288,
+      "sha256": "f99134ee129e5c766cfec8d54cfea089377b583f6ce0183cce17cf6c5624a066",
+      "gitBlobSha1": "9ee12d3fd82390bf206c3a40477c62c6a9058f0d"
+    },
+    {
+      "path": "parts/data-001.part",
+      "bytes": 524288,
+      "sha256": "4fa039a51a323e75b893bde3ccdeabdd47f291a86c5659ce3117833f388875c5",
+      "gitBlobSha1": "6e1abde20bc0cde3b415a0d8ada4970f2a790bc3"
+    },
+    {
+      "path": "parts/data-002.part",
+      "bytes": 524288,
+      "sha256": "083ba3c5459952456fb7416ffb1a06c72b7911596e820bcdc9f5212700f8bfc9",
+      "gitBlobSha1": "cc5bd2f7e3ffca8eb2e2984e0c2f71c32e469b19"
+    },
+    {
+      "path": "parts/data-003.part",
+      "bytes": 524288,
+      "sha256": "4e3c820010c25632750905f70ade8590d5f9acf4e2032033f1b219652274ce7d",
+      "gitBlobSha1": "b0bccb2abb0d6b198195e2a141cf2bd3fb856618"
+    },
+    {
+      "path": "parts/data-004.part",
+      "bytes": 524288,
+      "sha256": "366be3aef5024940f59a84427c95764f3b7c28847685c4264861ca0615993455",
+      "gitBlobSha1": "8779f2462aa7d67b83cec5028e39652966d8c0c5"
+    },
+    {
+      "path": "parts/data-005.part",
+      "bytes": 524288,
+      "sha256": "7ed10f562d238d296db7584d7435f056242c83afa1b9dd8d1d6dbef4a52b7cf3",
+      "gitBlobSha1": "0849381d1c3b13e34aa45e2e832dd932a4b08b04"
+    },
+    {
+      "path": "parts/data-006.part",
+      "bytes": 524288,
+      "sha256": "739ca2fe29ef0986baef956282c0eb86c6b8591a170cdf69bdfae4199b9a6077",
+      "gitBlobSha1": "07d35b2d325e442b9e8cdfa1ebe55c37c0698985"
+    },
+    {
+      "path": "parts/data-007.part",
+      "bytes": 524288,
+      "sha256": "94cc105059431fe72e8481a5d98e48932c04ca67e7f20417f00b9e0c2f782b47",
+      "gitBlobSha1": "8fc30beb12371eabeb4562a8a4c88a6529c5cc79"
+    },
+    {
+      "path": "parts/data-008.part",
+      "bytes": 524288,
+      "sha256": "74ec072bf1df50b80e5d89b97052799d72196453d88139d1ac3d00708d8e2de3",
+      "gitBlobSha1": "1e3a529966865a11c3571161e1b35403afccd46c"
+    },
+    {
+      "path": "parts/data-009.part",
+      "bytes": 524288,
+      "sha256": "a68fa1e07ab91b7ce02bfdb22852650a35254e7ca0ecad89f4f946957b836c7e",
+      "gitBlobSha1": "2ffff23dd3ad4db69799acad23c595bdd0c22f3c"
+    },
+    {
+      "path": "parts/data-010.part",
+      "bytes": 524288,
+      "sha256": "1acc4a753eae370c0b2166b919c070706388aa63b4f7a77541c8ee9f20075327",
+      "gitBlobSha1": "87970eae83d7d320b992b19d6d437c1599f8bb30"
+    },
+    {
+      "path": "parts/data-011.part",
+      "bytes": 524288,
+      "sha256": "d56e564f124879eebb5b6dffe16c5ef08475ee2aa47886a5b364ca19612a86fa",
+      "gitBlobSha1": "85ee86f0dd5f48d757f9493b237d4ba0cac62fed"
+    },
+    {
+      "path": "parts/data-012.part",
+      "bytes": 524288,
+      "sha256": "356c78e044e95c47482097be32589ca4b9553b2580553fee7ec5244a87d28917",
+      "gitBlobSha1": "8eaf2fb0d6b2309fa835fcc473dd52cff78660d5"
+    },
+    {
+      "path": "parts/data-013.part",
+      "bytes": 524288,
+      "sha256": "8980720eddda88bb7cc97fcd0b0e8f43e765160a224e777b59acd1c3f49b3310",
+      "gitBlobSha1": "e6cae7af733b48b852f4b0a3ce1465bb5f5c7b3e"
+    },
+    {
+      "path": "parts/data-014.part",
+      "bytes": 524288,
+      "sha256": "e4adc0c28ef9d2b493cc3c537c46496d9e3f382d00b5de21ca65a082d934668d",
+      "gitBlobSha1": "06f9e3e6ba1b8a7eea6e110f4067d7a350f871dc"
+    },
+    {
+      "path": "parts/data-015.part",
+      "bytes": 524288,
+      "sha256": "6373071042c52dad7c5336812a6b12fedf66f31e7df94b62d546dd26b8b143e7",
+      "gitBlobSha1": "1e69c96bb88ee2b595738c932427cf43d85d39b2"
+    },
+    {
+      "path": "parts/data-016.part",
+      "bytes": 73979,
+      "sha256": "e1f81394878382bf58ff457de0fd884884bff666d39541ee5ec34548876f8c8d",
+      "gitBlobSha1": "694a77b71a8651e8fc16d20077ada558cfce3017"
+    }
+  ],
+  "tag": "0.1.8-beta",
+  "targetCommit": "18eae5c2b8ccc4060f9731a27b0d54bac5c4a724",
+  "releaseMode": "latest",
+  "preview": {
+    "filename": "redblack-preview.png",
+    "bytes": 4225680,
+    "sha256": "5008e57a63dbb5c8ba65a6d5b6b8e3ed42c0e7d50843d6602bb6d058248f7abf",
+    "zipMember": "previews/redblack-combat.png"
+  }
+}

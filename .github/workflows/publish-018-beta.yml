@@ -1,0 +1,101 @@
+name: Publish 0.1.8-beta
+
+on:
+  push:
+    branches: [publish/0.1.8-beta]
+    paths:
+      - release-assets/0.1.8-beta/**
+      - .github/workflows/publish-018-beta.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-0.1.8-beta
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: 0.1.8-beta
+      TITLE: 0.1.8-beta 绿梦 Mod 管理器（红黑战斗特效）
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Verify and assemble the four release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="release-assets/$TAG"
+          curl --fail --location --retry 4 --retry-all-errors --connect-timeout 15 \
+            --output "$RUNNER_TEMP/previous-release.zip" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/0.16-beta/lvmeng-mod-manager-0.16-beta.zip"
+          python3 "$stage/assemble.py" "$RUNNER_TEMP/previous-release.zip" "$RUNNER_TEMP/$TAG" > "$RUNNER_TEMP/checked-assets.json"
+          target="$(jq -er .targetCommit "$RUNNER_TEMP/checked-assets.json")"
+          test "$target" != "$GITHUB_SHA"
+          git fetch --no-tags --depth=1 origin "$target"
+          test "$(git cat-file -t "$target")" = commit
+          test -z "$(git ls-tree --name-only "$target" -- "$stage")"
+
+      - name: Publish verified artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="release-assets/$TAG"
+          out="$RUNNER_TEMP/$TAG"
+          check="$RUNNER_TEMP/checked-assets.json"
+          target="$(jq -er .targetCommit "$check")"
+          mode="$(jq -er .releaseMode "$check")"
+          repo="$GITHUB_REPOSITORY"
+          endpoint="repos/$repo"
+          if gh release view "$TAG" --repo "$repo" >/dev/null 2>&1 ||
+             gh api "$endpoint/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo 'The release or tag already exists. Review it before retrying.'
+            exit 1
+          fi
+          mapfile -t names < <(jq -er '.assets[].name' "$check")
+          test "${#names[@]}" -eq 4
+          asset_paths=()
+          for asset in "${names[@]}"; do asset_paths+=("$out/$asset"); done
+          tag_sha="$(gh api --method POST "$endpoint/git/tags" \
+            -f tag="$TAG" -f message="$TITLE" -f object="$target" -f type=commit \
+            -f 'tagger[name]=github-actions[bot]' \
+            -f 'tagger[email]=41898282+github-actions[bot]@users.noreply.github.com' \
+            -f "tagger[date]=$(date -u +%Y-%m-%dT%H:%M:%SZ)" --jq .sha)"
+          gh api --method POST "$endpoint/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$tag_sha" >/dev/null
+          draft_flags=()
+          publish_flags=()
+          if [ "$mode" = prerelease ]; then
+            draft_flags=(--prerelease)
+          else
+            test "$mode" = latest
+            publish_flags=(--latest)
+          fi
+          gh release create "$TAG" "${asset_paths[@]}" --repo "$repo" --verify-tag --draft \
+            --title "$TITLE" --notes-file "$stage/notes.md" "${draft_flags[@]}"
+          release_id="$(gh api "$endpoint/releases?per_page=30" --paginate \
+            --jq ".[] | select(.tag_name == \"$TAG\" and .draft == true) | .id")"
+          [[ "$release_id" =~ ^[0-9]+$ ]]
+          verify_assets() {
+            gh api "$endpoint/releases/$release_id/assets?per_page=100" > "$RUNNER_TEMP/uploaded-assets.json"
+            python3 "$stage/assemble.py" --verify-upload "$check" "$RUNNER_TEMP/uploaded-assets.json"
+          }
+          verify_assets
+          gh release edit "$TAG" --repo "$repo" --draft=false "${publish_flags[@]}"
+          test "$(gh api "$endpoint/git/tags/$tag_sha" --jq .object.sha)" = "$target"
+          test "$(gh api "$endpoint/git/ref/tags/$TAG" --jq .object.sha)" = "$tag_sha"
+          test "$(gh api "$endpoint/releases/tags/$TAG" --jq .id)" = "$release_id"
+          test "$(gh api "$endpoint/releases/tags/$TAG" --jq .draft)" = false
+          if [ "$mode" = latest ]; then
+            test "$(gh api "$endpoint/releases/latest" --jq .tag_name)" = "$TAG"
+            test "$(gh api "$endpoint/releases/tags/$TAG" --jq .prerelease)" = false
+          else
+            test "$(gh api "$endpoint/releases?per_page=1" --jq '.[0].tag_name')" = "$TAG"
+            test "$(gh api "$endpoint/releases/tags/$TAG" --jq .prerelease)" = true
+          fi
+          verify_assets
