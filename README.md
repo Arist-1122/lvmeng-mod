@@ -2,11 +2,13 @@
 
 这是一个由玩家个人发起的非商业 Mod 制作与技术探索项目。
 
-> **最新发布 · 0.1.8-beta**
+> **最新发布 · 0.1.9-beta**
 >
-> 红黑战斗特效与闪避残影已修复，提供六套外观。完整红黑技能特效需选红黑开局。
+> **新增自由色彩变化功能！** 可以自由调整莉特莉丝「绮夜寐影」的皮肤色彩。管理器支持六套外观热切换，红黑保留为配色预设。
 >
-> [下载六套热切换包](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.8-beta/lvmeng-mod-manager-0.1.8-beta.zip) · [发布说明与实机截图](https://github.com/Arist-1122/lvmeng-mod/releases/tag/0.1.8-beta)
+> **【注意，战斗特效每次更改需要重启游戏，其他配色不用。】**
+>
+> [下载六套热切换包](https://github.com/Arist-1122/lvmeng-mod/releases/download/0.1.9-beta/lvmeng-mod-manager-0.1.9-beta.zip) · [发布说明与四张截图](https://github.com/Arist-1122/lvmeng-mod/releases/tag/0.1.9-beta)
 
 > **开发者入口 · 0.1.5 Beta V2 技术手册**
 >
